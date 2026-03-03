@@ -28,7 +28,7 @@ async function saveBlueprint(bid, bp) { lsSet(`bp:${bid}:${bp.id}`, bp); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 // ─── AI HELPERS ───────────────────────────────────────────────────────────────
-const CLAUDE = "claude-3-5-sonnet-20241022";
+const CLAUDE = "claude-sonnet-4-6";
 async function askClaude(system, messages) {
   const res = await fetch("/api/claude", {
     method: "POST",
