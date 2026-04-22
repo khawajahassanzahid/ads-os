@@ -28,7 +28,7 @@ async function saveBlueprint(bid, bp) { lsSet(`bp:${bid}:${bp.id}`, bp); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 // ─── AI HELPERS ───────────────────────────────────────────────────────────────
-const CLAUDE = "claude-sonnet-4-6";
+const CLAUDE = "claude-3-5-sonnet-20241022";
 async function askClaude(system, messages) {
   const res = await fetch("/api/claude", {
     method: "POST",
@@ -195,6 +195,8 @@ export default function AdsOS() {
   const [bpLoading, setBpLoading] = useState(false);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditResult, setAuditResult] = useState(null);
+  const [metaData, setMetaData] = useState(null);
+  const [metaLoading, setMetaLoading] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -213,6 +215,19 @@ export default function AdsOS() {
   const notify = (msg, type = "success") => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3500);
+  };
+
+  const fetchMetaData = async () => {
+    setMetaLoading(true);
+    try {
+      const [acct, campaigns, insights] = await Promise.all([
+        fetch('/api/meta?action=account').then(r => r.json()),
+        fetch('/api/meta?action=campaigns').then(r => r.json()),
+        fetch('/api/meta?action=insights&preset=last_30d').then(r => r.json()),
+      ]);
+      setMetaData({ account: acct, campaigns: campaigns.data || [], insights: insights.data?.[0] || {} });
+    } catch (e) { notify('Could not load Meta data', 'error'); }
+    finally { setMetaLoading(false); }
   };
 
   const openBrand = async (brand) => {
@@ -439,7 +454,7 @@ export default function AdsOS() {
             <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
               {/* Tabs */}
               <div style={{ borderBottom:"2px solid #0F1520", padding:"0 20px", display:"flex", gap:4, background:"#06080F", flexShrink:0 }}>
-                {[["overview","🏠 Overview"],["chat","💬 Chat"],["blueprint","🗺 Blueprint"],["audit","🔍 Audit"]].map(([id,label]) => (
+                {[["overview","🏠 Overview"],["meta","📊 Meta Live"],["chat","💬 Chat"],["blueprint","🗺 Blueprint"],["audit","🔍 Audit"]].map(([id,label]) => (
                   <button key={id} style={S.tab(brandTab===id)} onClick={() => setBrandTab(id)}>{label}</button>
                 ))}
               </div>
@@ -518,6 +533,116 @@ export default function AdsOS() {
               )}
 
               {/* CHAT */}
+              {brandTab === "meta" && (
+                <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
+                  <div style={{ maxWidth:880, margin:"0 auto" }} className="fade-up">
+                    <div style={{ ...S.card, background:`${bc}08`, border:`1px solid ${bc}30`, marginBottom:20, display:"flex", alignItems:"center", gap:16 }}>
+                      <div style={{ fontSize:32 }}>📊</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:800, fontSize:15, marginBottom:3 }}>Meta Live Data</div>
+                        <div style={{ fontSize:12, color:"#2A3550" }}>Real-time data pulled directly from your Meta Ads account.</div>
+                      </div>
+                      <button style={S.btn(bc)} className="hov" onClick={fetchMetaData} disabled={metaLoading}>
+                        {metaLoading ? <><Spinner color="#fff" size={13} /> Loading…</> : "🔄 Refresh"}
+                      </button>
+                    </div>
+
+                    {!metaData && !metaLoading && (
+                      <div style={{ textAlign:"center", padding:"48px 0" }}>
+                        <div style={{ fontSize:36, marginBottom:12 }}>📊</div>
+                        <div style={{ fontSize:14, color:"#2A3550", marginBottom:20 }}>Click Refresh to load your live Meta data</div>
+                        <button style={S.btn(bc)} className="hov" onClick={fetchMetaData}>Load Meta Data</button>
+                      </div>
+                    )}
+
+                    {metaLoading && (
+                      <div style={{ textAlign:"center", padding:"48px 0" }}>
+                        <Spinner color={bc} size={28} />
+                        <div style={{ marginTop:14, fontSize:13, color:"#2A3550" }}>Pulling live data from Meta…</div>
+                      </div>
+                    )}
+
+                    {metaData && !metaLoading && (() => {
+                      const { account, campaigns, insights } = metaData;
+                      const fmt = (n) => n ? Number(n).toLocaleString() : "0";
+                      const pct = (n) => n ? (Number(n)*100).toFixed(2)+"%" : "0%";
+                      const purchases = insights?.actions?.find(a => a.action_type==="purchase")?.value || 0;
+                      const revenue = insights?.action_values?.find(a => a.action_type==="purchase")?.value || 0;
+                      const roas = insights?.purchase_roas?.[0]?.value || 0;
+                      return (
+                        <div>
+                          {/* Account Summary */}
+                          <div style={{ fontWeight:800, fontSize:14, color:bc, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Account Summary</div>
+                          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:20 }}>
+                            {[
+                              ["Total Spent", `₨${fmt(account.amount_spent)}`],
+                              ["Balance", `₨${fmt(account.balance)}`],
+                              ["Spend Cap", `₨${fmt(account.spend_cap)}`],
+                              ["Currency", account.currency || "PKR"],
+                            ].map(([l,v],i) => (
+                              <div key={i} style={S.card}>
+                                <div style={{ fontSize:10, color:"#2A3550", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>{l}</div>
+                                <div style={{ fontWeight:800, fontSize:15, color:bc }}>{v}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Last 30 Days */}
+                          <div style={{ fontWeight:800, fontSize:14, color:bc, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Last 30 Days</div>
+                          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:20 }}>
+                            {[
+                              ["Spend", `₨${fmt(insights.spend)}`],
+                              ["Impressions", fmt(insights.impressions)],
+                              ["Clicks", fmt(insights.clicks)],
+                              ["CTR", pct(insights.ctr)],
+                              ["CPC", `₨${Number(insights.cpc||0).toFixed(0)}`],
+                              ["CPM", `₨${Number(insights.cpm||0).toFixed(0)}`],
+                              ["Purchases", fmt(purchases)],
+                              ["ROAS", Number(roas).toFixed(2)+"x"],
+                            ].map(([l,v],i) => (
+                              <div key={i} style={S.card}>
+                                <div style={{ fontSize:10, color:"#2A3550", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>{l}</div>
+                                <div style={{ fontWeight:800, fontSize:15, color:bc }}>{v}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Campaigns */}
+                          <div style={{ fontWeight:800, fontSize:14, color:bc, marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Campaigns ({campaigns.length})</div>
+                          {campaigns.length === 0 && <div style={{ color:"#2A3550", fontSize:13 }}>No campaigns found.</div>}
+                          {campaigns.map((camp, i) => {
+                            const ci = camp.insights?.data?.[0] || {};
+                            const campPurchases = ci.actions?.find(a => a.action_type==="purchase")?.value || 0;
+                            const campRoas = ci.purchase_roas?.[0]?.value || 0;
+                            return (
+                              <div key={i} style={{ ...S.card, marginBottom:10, borderLeft:`3px solid ${camp.status==="ACTIVE" ? "#00C853" : "#2A3550"}` }}>
+                                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                                  <div>
+                                    <div style={{ fontWeight:700, fontSize:14 }}>{camp.name}</div>
+                                    <div style={{ fontSize:11, color:"#2A3550", marginTop:2 }}>{camp.objective} · ID: {camp.id}</div>
+                                  </div>
+                                  <span style={{ background: camp.status==="ACTIVE" ? "#00C85320" : "#1E2535", color: camp.status==="ACTIVE" ? "#00C853" : "#4A5568", border:`1px solid ${camp.status==="ACTIVE" ? "#00C85340" : "#2A3550"}`, borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:700 }}>{camp.status}</span>
+                                </div>
+                                {ci.spend && (
+                                  <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:8 }}>
+                                    {[["Spend",`₨${fmt(ci.spend)}`],["Impressions",fmt(ci.impressions)],["Clicks",fmt(ci.clicks)],["Purchases",fmt(campPurchases)],["ROAS",Number(campRoas).toFixed(2)+"x"]].map(([l,v],j) => (
+                                      <div key={j} style={{ background:"#06080F", borderRadius:8, padding:"8px 10px" }}>
+                                        <div style={{ fontSize:10, color:"#2A3550", marginBottom:3 }}>{l}</div>
+                                        <div style={{ fontWeight:700, fontSize:13, color:"#D8E0F0" }}>{v}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
               {brandTab === "chat" && (
                 <>
                   <div style={{ flex:1, overflowY:"auto", padding:"18px 0" }}>
