@@ -83,14 +83,22 @@ Write all copy. Make it specific to JULKÉ and ${theme || 'footwear sales'}. If 
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 3000,
+        max_tokens: 5000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
     });
     const data = await r.json();
-    const text = data.content?.[0]?.text || '{}';
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
+    if (data.error) return res.status(200).json({ error: `Claude API: ${data.error.type} — ${data.error.message}` });
+    const text = data.content?.[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/)?.[0] || '{}';
+    let json;
+    try {
+      json = JSON.parse(match);
+    } catch {
+      const cleaned = match.replace(/,\s*([}\]])/g, '$1');
+      json = JSON.parse(cleaned);
+    }
     return res.status(200).json(json);
   } catch (err) {
     return res.status(500).json({ error: err.message, raw: err.toString() });
