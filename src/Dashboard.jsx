@@ -58,6 +58,12 @@ export default function Dashboard({ bc }) {
   const [preset, setPreset] = useState("last_30d");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [expanded, setExpanded] = useState({});       // campId → true
+  const [adsets, setAdsets] = useState({});           // campId → []
+  const [adsetsLoading, setAdsetsLoading] = useState({});
+  const [expandedAs, setExpandedAs] = useState({});   // adsetId → true
+  const [ads, setAds] = useState({});                 // adsetId → []
+  const [adsLoading, setAdsLoading] = useState({});
 
   useEffect(() => { loadAll(); }, []);
 
@@ -84,6 +90,32 @@ export default function Dashboard({ bc }) {
       setError("Failed to load data. Check your API connections.");
     }
     setLoading(false);
+  };
+
+  const toggleCampaign = async (campId, dateQ) => {
+    if (expanded[campId]) { setExpanded(p => ({ ...p, [campId]: false })); return; }
+    setExpanded(p => ({ ...p, [campId]: true }));
+    if (adsets[campId]) return;
+    setAdsetsLoading(p => ({ ...p, [campId]: true }));
+    try {
+      const r = await fetch(`/api/meta?action=adsets&campaignId=${campId}&${dateQ}`);
+      const d = await r.json();
+      setAdsets(p => ({ ...p, [campId]: d.data || [] }));
+    } catch { setAdsets(p => ({ ...p, [campId]: [] })); }
+    setAdsetsLoading(p => ({ ...p, [campId]: false }));
+  };
+
+  const toggleAdset = async (asId, dateQ) => {
+    if (expandedAs[asId]) { setExpandedAs(p => ({ ...p, [asId]: false })); return; }
+    setExpandedAs(p => ({ ...p, [asId]: true }));
+    if (ads[asId]) return;
+    setAdsLoading(p => ({ ...p, [asId]: true }));
+    try {
+      const r = await fetch(`/api/meta?action=ads&adsetId=${asId}&${dateQ}`);
+      const d = await r.json();
+      setAds(p => ({ ...p, [asId]: d.data || [] }));
+    } catch { setAds(p => ({ ...p, [asId]: [] })); }
+    setAdsLoading(p => ({ ...p, [asId]: false }));
   };
 
   const generateBrief = async () => {
@@ -166,6 +198,8 @@ export default function Dashboard({ bc }) {
   const allCamps = meta?.campaigns || [];
 
   const progressColor = progress >= 70 ? "#00C853" : progress >= 40 ? "#F59E0B" : "#EF4444";
+  const isCustom = preset === "custom" && customFrom && customTo;
+  const dateQ = isCustom ? `since=${customFrom}&until=${customTo}` : `preset=${preset}`;
 
   const SEGMENTS = [
     { key: "recent",    label: "Recent Buyers (30d)",    icon: "🟢", desc: "Exclude from prospecting — already bought",  color: "#00C853" },
@@ -295,35 +329,102 @@ export default function Dashboard({ bc }) {
             const purchases = ci.actions?.find(a => a.action_type === "purchase")?.value || 0;
             const freq = parseFloat(ci.frequency || 0);
             const isActive = c.status === "ACTIVE";
+            const isOpen = expanded[c.id];
 
             return (
-              <div key={i} style={{
-                display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6,
-                padding: "10px", borderRadius: 10, marginBottom: 4, alignItems: "center",
-                background: isActive ? roasBg(roas) : "#06080F",
-                border: `1px solid ${isActive && roas > 0 ? roasColor(roas) + "25" : "#0F1520"}`,
-                opacity: isActive ? 1 : 0.45,
-              }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 12, color: "#D8E0F0", lineHeight: 1.3 }}>{c.name}</div>
-                  <div style={{ fontSize: 10, color: "#4A5568", marginTop: 2 }}>{c.objective}</div>
+              <div key={i} style={{ marginBottom: 4 }}>
+                {/* Campaign row — click to expand */}
+                <div
+                  onClick={() => toggleCampaign(c.id, dateQ)}
+                  style={{
+                    display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6,
+                    padding: "10px", borderRadius: isOpen ? "10px 10px 0 0" : 10, alignItems: "center", cursor: "pointer",
+                    background: isActive ? roasBg(roas) : "#06080F",
+                    border: `1px solid ${isActive && roas > 0 ? roasColor(roas) + "25" : "#0F1520"}`,
+                    opacity: isActive ? 1 : 0.45,
+                  }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontSize: 9, color: "#4A5568", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 12, color: "#D8E0F0", lineHeight: 1.3 }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: "#4A5568", marginTop: 2 }}>{c.objective}</div>
+                    </div>
+                  </div>
+                  <span style={{ background: isActive ? "#00C85318" : "#1E2535", color: isActive ? "#00C853" : "#4A5568", border: `1px solid ${isActive ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{c.status}</span>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#D8E0F0" }}>{ci.spend ? PKR(ci.spend) : "—"}</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: roas > 0 ? roasColor(roas) : "#4A5568" }}>{roas > 0 ? `${roas.toFixed(1)}x` : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.ctr ? `${parseFloat(ci.ctr).toFixed(2)}%` : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.cpm ? PKR(ci.cpm) : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{purchases || "—"}</div>
+                  <div style={{ fontSize: 12, color: freq >= 3 ? "#EF4444" : "#8892A4", fontWeight: freq >= 3 ? 700 : 400 }}>
+                    {freq > 0 ? freq.toFixed(1) : "—"}{freq >= 3 && <span style={{ fontSize: 9, marginLeft: 3 }}>⚠️</span>}
+                  </div>
                 </div>
-                <div>
-                  <span style={{
-                    background: isActive ? "#00C85318" : "#1E2535", color: isActive ? "#00C853" : "#4A5568",
-                    border: `1px solid ${isActive ? "#00C85335" : "#2A3550"}`,
-                    borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700
-                  }}>{c.status}</span>
-                </div>
-                <div style={{ fontWeight: 700, fontSize: 12, color: "#D8E0F0" }}>{ci.spend ? PKR(ci.spend) : "—"}</div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: roas > 0 ? roasColor(roas) : "#4A5568" }}>{roas > 0 ? `${roas.toFixed(1)}x` : "—"}</div>
-                <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.ctr ? `${parseFloat(ci.ctr).toFixed(2)}%` : "—"}</div>
-                <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.cpm ? PKR(ci.cpm) : "—"}</div>
-                <div style={{ fontSize: 12, color: "#8892A4" }}>{purchases || "—"}</div>
-                <div style={{ fontSize: 12, color: freq >= 3 ? "#EF4444" : "#8892A4", fontWeight: freq >= 3 ? 700 : 400 }}>
-                  {freq > 0 ? freq.toFixed(1) : "—"}
-                  {freq >= 3 && <span style={{ fontSize: 9, marginLeft: 3 }}>⚠️</span>}
-                </div>
+
+                {/* Ad Sets (expanded) */}
+                {isOpen && (
+                  <div style={{ background: "#06080F", border: "1px solid #0F1520", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "8px 10px 10px 28px" }}>
+                    {adsetsLoading[c.id] && <div style={{ color: "#4A5568", fontSize: 12, padding: "8px 0" }}>Loading ad sets…</div>}
+                    {(adsets[c.id] || []).map((as, j) => {
+                      const ai = as.insights?.data?.[0] || {};
+                      const asRoas = parseFloat(ai.purchase_roas?.[0]?.value || 0);
+                      const asPurchases = ai.actions?.find(a => a.action_type === "purchase")?.value || 0;
+                      const asOpen = expandedAs[as.id];
+                      return (
+                        <div key={j} style={{ marginBottom: 4 }}>
+                          <div onClick={() => toggleAdset(as.id, dateQ)} style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "8px 10px", borderRadius: asOpen ? "8px 8px 0 0" : 8, alignItems: "center", cursor: "pointer", background: "#0A0C14", border: "1px solid #1E2535" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 9, color: "#2A3550", display: "inline-block", transform: asOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                              <div>
+                                <div style={{ fontWeight: 500, fontSize: 11, color: "#C8D3E8" }}>{as.name}</div>
+                                <div style={{ fontSize: 10, color: "#4A5568" }}>Ad Set · {as.optimization_goal || ""}</div>
+                              </div>
+                            </div>
+                            <span style={{ background: as.status === "ACTIVE" ? "#00C85318" : "#1E2535", color: as.status === "ACTIVE" ? "#00C853" : "#4A5568", border: `1px solid ${as.status === "ACTIVE" ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{as.status}</span>
+                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.spend ? PKR(ai.spend) : "—"}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: asRoas > 0 ? roasColor(asRoas) : "#4A5568" }}>{asRoas > 0 ? `${asRoas.toFixed(1)}x` : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.ctr ? `${parseFloat(ai.ctr).toFixed(2)}%` : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.cpm ? PKR(ai.cpm) : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8892A4" }}>{asPurchases || "—"}</div>
+                            <div />
+                          </div>
+
+                          {/* Ads (expanded) */}
+                          {asOpen && (
+                            <div style={{ background: "#04050A", border: "1px solid #0F1520", borderTop: "none", borderRadius: "0 0 8px 8px", padding: "6px 8px 8px 24px" }}>
+                              {adsLoading[as.id] && <div style={{ color: "#4A5568", fontSize: 11, padding: "6px 0" }}>Loading ads…</div>}
+                              {(ads[as.id] || []).map((ad, k) => {
+                                const adi = ad.insights?.data?.[0] || {};
+                                const adRoas = parseFloat(adi.purchase_roas?.[0]?.value || 0);
+                                const adPurchases = adi.actions?.find(a => a.action_type === "purchase")?.value || 0;
+                                return (
+                                  <div key={k} style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "7px 10px", borderRadius: 7, marginBottom: 3, alignItems: "center", background: "#0A0C14", border: "1px solid #0F1520" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", flexShrink: 0 }} />}
+                                      <div>
+                                        <div style={{ fontWeight: 500, fontSize: 11, color: "#8892A4" }}>{ad.name}</div>
+                                        <div style={{ fontSize: 10, color: "#2A3550" }}>Ad</div>
+                                      </div>
+                                    </div>
+                                    <span style={{ background: ad.status === "ACTIVE" ? "#00C85318" : "#1E2535", color: ad.status === "ACTIVE" ? "#00C853" : "#4A5568", border: `1px solid ${ad.status === "ACTIVE" ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{ad.status}</span>
+                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.spend ? PKR(adi.spend) : "—"}</div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: adRoas > 0 ? roasColor(adRoas) : "#4A5568" }}>{adRoas > 0 ? `${adRoas.toFixed(1)}x` : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.ctr ? `${parseFloat(adi.ctr).toFixed(2)}%` : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.cpm ? PKR(adi.cpm) : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adPurchases || "—"}</div>
+                                    <div />
+                                  </div>
+                                );
+                              })}
+                              {!adsLoading[as.id] && (ads[as.id] || []).length === 0 && <div style={{ color: "#2A3550", fontSize: 11, padding: "6px 0" }}>No ads found.</div>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!adsetsLoading[c.id] && (adsets[c.id] || []).length === 0 && <div style={{ color: "#2A3550", fontSize: 12, padding: "8px 0" }}>No ad sets found.</div>}
+                  </div>
+                )}
               </div>
             );
           })}

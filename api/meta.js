@@ -80,6 +80,21 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // GET ADS for an ad set
+    if (action === 'ads') {
+      const { adsetId, campaignId } = req.query;
+      const insightsField = since && until
+        ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpm,frequency,actions,action_values,purchase_roas}`
+        : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpm,frequency,actions,action_values,purchase_roas}`;
+      const parentId = adsetId || campaignId;
+      const endpoint = adsetId ? `${parentId}/ads` : `${parentId}/ads`;
+      const r = await fetch(
+        `${baseUrl}/${endpoint}?fields=id,name,status,adset_id,creative{id,name,thumbnail_url},${insightsField}&limit=50&access_token=${token}`
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
     // GET ACCOUNT SUMMARY
     if (action === 'account') {
       const r = await fetch(
