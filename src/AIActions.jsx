@@ -16,6 +16,7 @@ const PRIORITY_STYLE = {
 export default function AIActions({ bc, liveData, onCampaignCreated }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
   const [dismissed, setDismissed] = useState({});
   const [executing, setExecuting] = useState({});
   const [done, setDone] = useState({});
@@ -28,6 +29,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
   const getSuggestions = async () => {
     setLoading(true);
     setSuggestions([]);
+    setApiError(null);
     setDismissed({});
     setDone({});
     try {
@@ -37,8 +39,16 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
         body: JSON.stringify({ ...liveData, theme: theme || undefined }),
       });
       const data = await r.json();
-      setSuggestions(data.suggestions || []);
-    } catch { setSuggestions([]); }
+      if (data.error) {
+        setApiError(data.error + (data.raw ? ` — ${data.raw}` : ""));
+      } else if (!data.suggestions?.length) {
+        setApiError("AI returned no suggestions. Raw: " + JSON.stringify(data).slice(0, 200));
+      } else {
+        setSuggestions(data.suggestions);
+      }
+    } catch (e) {
+      setApiError("Request failed: " + e.message);
+    }
     setLoading(false);
   };
 
@@ -237,7 +247,13 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
         </div>
       )}
 
-      {!loading && suggestions.length === 0 && (
+      {!loading && apiError && (
+        <div style={{ background: "#EF444412", border: "1px solid #EF444430", borderRadius: 10, padding: "12px 16px", color: "#EF4444", fontSize: 12 }}>
+          ⚠️ {apiError}
+        </div>
+      )}
+
+      {!loading && !apiError && suggestions.length === 0 && (
         <div style={{ textAlign: "center", padding: "20px 0", color: "#2A3550", fontSize: 13 }}>
           Hit "Get Actions" to analyze your live data and get specific recommendations.
         </div>
