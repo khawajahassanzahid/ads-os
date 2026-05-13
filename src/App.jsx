@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Dashboard from "./Dashboard";
 
 // ─── STORAGE HELPERS (localStorage) ─────────────────────────────────────────
 function lsGet(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
@@ -28,7 +29,7 @@ async function saveBlueprint(bid, bp) { lsSet(`bp:${bid}:${bp.id}`, bp); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 // ─── AI HELPERS ───────────────────────────────────────────────────────────────
-const CLAUDE = "claude-3-5-sonnet-20241022";
+const CLAUDE = "claude-sonnet-4-6";
 async function askClaude(system, messages) {
   const res = await fetch("/api/claude", {
     method: "POST",
@@ -237,7 +238,7 @@ export default function AdsOS() {
     setActiveChat(null); setMessages([]);
     setActiveBlueprint(b[0] || null);
     setAuditResult(null);
-    setBrandTab("overview");
+    setBrandTab("dashboard");
     setAppView("brand");
   };
 
@@ -454,10 +455,13 @@ export default function AdsOS() {
             <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
               {/* Tabs */}
               <div style={{ borderBottom:"2px solid #0F1520", padding:"0 20px", display:"flex", gap:4, background:"#06080F", flexShrink:0 }}>
-                {[["overview","🏠 Overview"],["meta","📊 Meta Live"],["chat","💬 Chat"],["blueprint","🗺 Blueprint"],["audit","🔍 Audit"]].map(([id,label]) => (
+                {[["dashboard","⚡ Dashboard"],["overview","🏠 Overview"],["meta","📊 Meta Live"],["chat","💬 Chat"],["blueprint","🗺 Blueprint"],["audit","🔍 Audit"]].map(([id,label]) => (
                   <button key={id} style={S.tab(brandTab===id)} onClick={() => setBrandTab(id)}>{label}</button>
                 ))}
               </div>
+
+              {/* DASHBOARD */}
+              {brandTab === "dashboard" && <Dashboard bc={bc} activeBrand={activeBrand} />}
 
               {/* OVERVIEW */}
               {brandTab === "overview" && (
