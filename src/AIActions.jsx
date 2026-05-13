@@ -178,7 +178,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
           const adSetBody = {
             name: adSet.name,
             campaign_id: campData.id,
-            optimization_goal: "PURCHASE",
+            optimization_goal: "OFFSITE_CONVERSIONS",
             billing_event: "IMPRESSIONS",
             bid_strategy: "LOWEST_COST_WITHOUT_CAP",
             daily_budget: adSet.daily_budget || 1100000,
