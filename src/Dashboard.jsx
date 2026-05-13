@@ -51,6 +51,7 @@ export default function Dashboard({ bc }) {
   const [shopProducts, setShopProducts] = useState([]);
   const [shopCustomers, setShopCustomers] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [brief, setBrief] = useState(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [audienceLoading, setAudienceLoading] = useState({});
@@ -68,10 +69,10 @@ export default function Dashboard({ bc }) {
 
   useEffect(() => { loadAll(); }, []);
 
-  const loadAll = async (p = preset, cf = customFrom, ct = customTo) => {
-    setLoading(true);
+  const loadAll = async (p = preset, cf = customFrom, ct = customTo, silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
     setError(null);
-    setBrief(null);
     const isCustom = p === "custom" && cf && ct;
     const dateQ = isCustom ? `since=${cf}&until=${ct}` : `preset=${p}`;
     try {
@@ -89,9 +90,10 @@ export default function Dashboard({ bc }) {
       setShopProducts(products.products || []);
       setShopCustomers(customers);
     } catch (e) {
-      setError("Failed to load data. Check your API connections.");
+      if (!silent) setError("Failed to load data. Check your API connections.");
     }
     setLoading(false);
+    setRefreshing(false);
   };
 
   const toggleCampaign = async (campId, dateQ) => {
@@ -239,7 +241,7 @@ export default function Dashboard({ bc }) {
                   key={key}
                   onClick={() => {
                     setPreset(key);
-                    if (key !== "custom") loadAll(key, customFrom, customTo);
+                    if (key !== "custom") loadAll(key, customFrom, customTo, !!meta);
                   }}
                   style={{
                     background: preset === key ? bc : "#0A0C14",
@@ -263,13 +265,13 @@ export default function Dashboard({ bc }) {
                   style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#D8E0F0", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
                 />
                 <button
-                  onClick={() => customFrom && customTo && loadAll("custom", customFrom, customTo)}
+                  onClick={() => customFrom && customTo && loadAll("custom", customFrom, customTo, !!meta)}
                   disabled={!customFrom || !customTo}
                   style={{ background: bc, border: "none", borderRadius: 7, color: "#fff", padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: (!customFrom || !customTo) ? 0.4 : 1 }}
                 >Apply</button>
               </div>
             )}
-            <button onClick={() => loadAll()} style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#4A5568", padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>↻</button>
+            <button onClick={() => loadAll(preset, customFrom, customTo, !!meta)} style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: refreshing ? bc : "#4A5568", padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>↻</button>
           </div>
         </div>
 
@@ -315,7 +317,7 @@ export default function Dashboard({ bc }) {
         </div>
 
         {/* ── AI ACTION CENTER ───────────────────────────────────── */}
-        {!loading && meta && (
+        {meta && (
           <AIActions
             bc={bc}
             liveData={{
@@ -325,7 +327,7 @@ export default function Dashboard({ bc }) {
               shopifyProducts: shopProducts,
               customerCounts: shopCustomers?.counts,
             }}
-            onCampaignCreated={() => loadAll()}
+            onCampaignCreated={() => loadAll(preset, customFrom, customTo, true)}
           />
         )}
 
