@@ -175,29 +175,24 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             ...(targeting.custom_audiences ? { custom_audiences: targeting.custom_audiences } : {}),
           };
 
-          const buildAdSetBody = (optGoal) => ({
+          const adSetBody = {
             name: adSet.name,
             campaign_id: campData.id,
-            optimization_goal: optGoal,
+            optimization_goal: "PURCHASE",
             billing_event: "IMPRESSIONS",
             bid_strategy: "LOWEST_COST_WITHOUT_CAP",
             daily_budget: adSet.daily_budget || 1100000,
             targeting: cleanTargeting,
             status: "PAUSED",
-            ...(optGoal === "PURCHASE" ? { promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" } } : {}),
-          });
+            promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" },
+          };
 
-          let asData = null;
-          // Try PURCHASE first, fall back to LINK_CLICKS if Meta rejects it
-          for (const goal of ["PURCHASE", "LINK_CLICKS"]) {
-            const asRes = await fetch("/api/meta?action=create_adset", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(buildAdSetBody(goal)),
-            });
-            asData = await asRes.json();
-            if (asData.id) break;
-          }
+          const asRes = await fetch("/api/meta?action=create_adset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(adSetBody),
+          });
+          const asData = await asRes.json();
 
           results.adSets.push({
             id: asData.id,
@@ -429,7 +424,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                           <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#00C853" : "#EF4444" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
                         </div>
                         {as.audienceNote && <div style={{ fontSize: 11, color: "#00C853", marginTop: 4 }}>👥 {as.audienceNote}</div>}
-                        {as.error && <div style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{as.error}</div>}
+                        {as.error && <div style={{ fontSize: 11, color: "#EF4444", marginTop: 6, background: "#EF444418", borderRadius: 6, padding: "6px 8px", wordBreak: "break-all" }}>Meta error: {as.error}</div>}
                       </div>
                     ))}
 
