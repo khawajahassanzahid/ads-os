@@ -15,18 +15,20 @@ export default async function handler(req, res) {
 
   const { action } = req.query;
 
-  // Test endpoint
+  // Test endpoint - tries both auth methods
   if (action === 'test') {
     const url = `${baseUrl}/shop.json`;
     try {
-      const r = await fetch(url, { headers });
-      const text = await r.text();
+      const [r1, r2] = await Promise.all([
+        fetch(url, { headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' } }),
+        fetch(url, { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }),
+      ]);
+      const [t1, t2] = await Promise.all([r1.text(), r2.text()]);
       return res.status(200).json({
-        status: r.status,
         store,
         tokenPrefix: token ? token.substring(0, 10) : 'missing',
-        url,
-        response: text.substring(0, 500)
+        xShopifyHeader: { status: r1.status, response: t1.substring(0, 200) },
+        bearerHeader: { status: r2.status, response: t2.substring(0, 200) },
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
