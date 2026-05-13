@@ -100,8 +100,12 @@ Rules:
       }),
     });
     const data = await r.json();
-    const text = data.content?.[0]?.text || '{}';
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{"suggestions":[]}');
+    if (data.error) return res.status(200).json({ error: `Claude API: ${data.error.type} — ${data.error.message}` });
+    const text = data.content?.[0]?.text || '';
+    if (!text) return res.status(200).json({ error: `Claude returned no text. Full response: ${JSON.stringify(data).slice(0, 300)}` });
+    const match = text.match(/\{[\s\S]*\}/)?.[0];
+    if (!match) return res.status(200).json({ error: `Could not find JSON in Claude response: ${text.slice(0, 300)}` });
+    const json = JSON.parse(match);
     return res.status(200).json(json);
   } catch (err) {
     return res.status(500).json({ error: err.message });
