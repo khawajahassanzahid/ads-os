@@ -13,7 +13,24 @@ export default async function handler(req, res) {
     'Content-Type': 'application/json',
   };
 
-  const { action } = req.query;
+  const { action, preset = 'last_30d', since, until } = req.query;
+
+  // Convert preset or custom range to Shopify date params
+  const getDateRange = () => {
+    if (since && until) return { min: since, max: until };
+    const now = new Date();
+    const pad = (d) => d.toISOString().split('T')[0];
+    const presets = {
+      today:      { min: pad(new Date(now.getFullYear(), now.getMonth(), now.getDate())), max: pad(now) },
+      yesterday:  { min: pad(new Date(now - 86400000)), max: pad(new Date(now - 86400000)) },
+      last_7d:    { min: pad(new Date(now - 7 * 86400000)), max: pad(now) },
+      last_14d:   { min: pad(new Date(now - 14 * 86400000)), max: pad(now) },
+      last_30d:   { min: pad(new Date(now - 30 * 86400000)), max: pad(now) },
+      this_month: { min: pad(new Date(now.getFullYear(), now.getMonth(), 1)), max: pad(now) },
+      last_month: { min: pad(new Date(now.getFullYear(), now.getMonth() - 1, 1)), max: pad(new Date(now.getFullYear(), now.getMonth(), 0)) },
+    };
+    return presets[preset] || presets['last_30d'];
+  };
 
   // Test endpoint - tries both auth methods
   if (action === 'test') {
@@ -36,18 +53,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // SALES SUMMARY - today / 7 days / 30 days
+    // SALES SUMMARY for selected date range
     if (action === 'summary') {
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-      const [today, week, month] = await Promise.all([
-        fetch(`${baseUrl}/orders.json?status=any&created_at_min=${startOfDay}&limit=250&fields=id,total_price,financial_status`, { headers }).then(r => r.json()),
-        fetch(`${baseUrl}/orders.json?status=any&created_at_min=${startOfWeek}&limit=250&fields=id,total_price,financial_status`, { headers }).then(r => r.json()),
-        fetch(`${baseUrl}/orders.json?status=any&created_at_min=${startOfMonth}&limit=250&fields=id,total_price,financial_status`, { headers }).then(r => r.json()),
-      ]);
+      const { min, max } = getDateRange();
+      const r = await fetch(`${baseUrl}/orders.json?status=any&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=id,total_price,financial_status`, { headers });
+      const data = await r.json();
 
       const summarize = (orders) => {
         const paid = (orders || []).filter(o => o.financial_status === 'paid');
@@ -60,17 +70,16 @@ export default async function handler(req, res) {
       };
 
       return res.status(200).json({
-        today: summarize(today.orders),
-        week: summarize(week.orders),
-        month: summarize(month.orders),
+        period: summarize(data.orders),
+        dateRange: { min, max },
         target: 10000000,
       });
     }
 
-    // TOP SELLING PRODUCTS (last 30 days)
+    // TOP SELLING PRODUCTS for selected date range
     if (action === 'products') {
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const r = await fetch(`${baseUrl}/orders.json?status=any&created_at_min=${since}&limit=250&fields=line_items`, { headers });
+      const { min, max } = getDateRange();
+      const r = await fetch(`${baseUrl}/orders.json?status=any&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=line_items`, { headers });
       const data = await r.json();
 
       const productMap = {};

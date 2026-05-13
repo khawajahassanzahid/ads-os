@@ -33,6 +33,17 @@ const roasBg = (r) => {
 const TARGET = 10000000;
 const BUDGET = 1000000;
 
+const PRESETS = [
+  { key: "today",       label: "Today" },
+  { key: "yesterday",   label: "Yesterday" },
+  { key: "last_7d",     label: "7 Days" },
+  { key: "last_14d",    label: "14 Days" },
+  { key: "last_30d",    label: "30 Days" },
+  { key: "this_month",  label: "This Month" },
+  { key: "last_month",  label: "Last Month" },
+  { key: "custom",      label: "Custom" },
+];
+
 export default function Dashboard({ bc }) {
   const [meta, setMeta] = useState(null);
   const [shopSummary, setShopSummary] = useState(null);
@@ -44,19 +55,25 @@ export default function Dashboard({ bc }) {
   const [audienceLoading, setAudienceLoading] = useState({});
   const [audienceDone, setAudienceDone] = useState({});
   const [error, setError] = useState(null);
+  const [preset, setPreset] = useState("last_30d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => { loadAll(); }, []);
 
-  const loadAll = async () => {
+  const loadAll = async (p = preset, cf = customFrom, ct = customTo) => {
     setLoading(true);
     setError(null);
+    setBrief(null);
+    const isCustom = p === "custom" && cf && ct;
+    const dateQ = isCustom ? `since=${cf}&until=${ct}` : `preset=${p}`;
     try {
       const [acct, camps, insights, summary, products, customers] = await Promise.all([
         fetch("/api/meta?action=account").then(r => r.json()),
-        fetch("/api/meta?action=campaigns").then(r => r.json()),
-        fetch("/api/meta?action=insights&preset=last_30d").then(r => r.json()),
-        fetch("/api/shopify?action=summary").then(r => r.json()),
-        fetch("/api/shopify?action=products").then(r => r.json()),
+        fetch(`/api/meta?action=campaigns&${dateQ}`).then(r => r.json()),
+        fetch(`/api/meta?action=insights&${dateQ}`).then(r => r.json()),
+        fetch(`/api/shopify?action=summary&${dateQ}`).then(r => r.json()),
+        fetch(`/api/shopify?action=products&${dateQ}`).then(r => r.json()),
         fetch("/api/shopify?action=customers").then(r => r.json()),
       ]);
       setMeta({ account: acct, campaigns: camps.data || [], insights: insights.data?.[0] || {} });
@@ -137,8 +154,8 @@ export default function Dashboard({ bc }) {
     </div>
   );
 
-  const monthRev = shopSummary?.month?.paidRevenue || 0;
-  const monthOrders = shopSummary?.month?.paidOrders || 0;
+  const monthRev = shopSummary?.period?.paidRevenue || 0;
+  const monthOrders = shopSummary?.period?.paidOrders || 0;
   const metaSpend = parseFloat(meta?.insights?.spend || 0);
   const metaRoas = parseFloat(meta?.insights?.purchase_roas?.[0]?.value || 0);
   const progress = Math.min((monthRev / TARGET) * 100, 100);
@@ -164,12 +181,51 @@ export default function Dashboard({ bc }) {
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
 
         {/* ── HEADER ─────────────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontWeight: 900, fontSize: 20, color: "#D8E0F0", letterSpacing: "-0.02em" }}>JULKÉ Performance</div>
-            <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>Live · Meta + Shopify · Last 30 days</div>
+            <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>Live · Meta + Shopify</div>
           </div>
-          <button onClick={loadAll} style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 8, color: "#4A5568", padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>↻ Refresh</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {/* Preset pills */}
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {PRESETS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setPreset(key);
+                    if (key !== "custom") loadAll(key, customFrom, customTo);
+                  }}
+                  style={{
+                    background: preset === key ? bc : "#0A0C14",
+                    border: `1px solid ${preset === key ? bc : "#1E2535"}`,
+                    borderRadius: 7, color: preset === key ? "#fff" : "#4A5568",
+                    padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                  }}
+                >{label}</button>
+              ))}
+            </div>
+            {/* Custom date range inputs */}
+            {preset === "custom" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+                  style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#D8E0F0", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
+                />
+                <span style={{ color: "#4A5568", fontSize: 11 }}>→</span>
+                <input
+                  type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+                  style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#D8E0F0", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
+                />
+                <button
+                  onClick={() => customFrom && customTo && loadAll("custom", customFrom, customTo)}
+                  disabled={!customFrom || !customTo}
+                  style={{ background: bc, border: "none", borderRadius: 7, color: "#fff", padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: (!customFrom || !customTo) ? 0.4 : 1 }}
+                >Apply</button>
+              </div>
+            )}
+            <button onClick={() => loadAll()} style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#4A5568", padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>↻</button>
+          </div>
         </div>
 
         {/* ── SCOREBOARD ─────────────────────────────────────────── */}
@@ -202,7 +258,7 @@ export default function Dashboard({ bc }) {
           {[
             { label: "Meta Spend (30d)", value: PKR(metaSpend), sub: metaSpend > BUDGET ? "⚠️ Over budget" : `${PKR(BUDGET - metaSpend)} remaining`, color: metaSpend > BUDGET ? "#EF4444" : bc },
             { label: "Blended ROAS",     value: metaRoas > 0 ? `${metaRoas.toFixed(1)}x` : "—", sub: "Target: 7–10x", color: roasColor(metaRoas) },
-            { label: "Paid Orders",      value: NUM(monthOrders), sub: `Today: ${shopSummary?.today?.orders || 0} orders`, color: bc },
+            { label: "Paid Orders",      value: NUM(monthOrders), sub: `${shopSummary?.period?.orders || 0} total orders`, color: bc },
             { label: "Active Campaigns", value: activeCamps.length, sub: `${allCamps.length} total campaigns`, color: bc },
           ].map(({ label, value, sub, color }, i) => (
             <div key={i} style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 12, padding: "14px 16px" }}>

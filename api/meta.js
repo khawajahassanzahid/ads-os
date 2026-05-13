@@ -9,13 +9,21 @@ export default async function handler(req, res) {
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
   const baseUrl = 'https://graph.facebook.com/v19.0';
 
-  const { action } = req.query;
+  const { action, preset = 'last_30d', since, until } = req.query;
+
+  // Build date param string for inline insights and standalone insights
+  const dateParam = (since && until)
+    ? `time_range={"since":"${since}","until":"${until}"}`
+    : `date_preset=${preset}`;
 
   try {
     // GET CAMPAIGNS
     if (action === 'campaigns') {
+      const insightsField = since && until
+        ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`
+        : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`;
       const r = await fetch(
-        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,spend_cap,start_time,stop_time,insights.date_preset(last_30d){spend,impressions,clicks,ctr,cpc,actions,action_values,cost_per_action_type,purchase_roas}&access_token=${token}`
+        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&access_token=${token}`
       );
       const data = await r.json();
       return res.status(200).json(data);
@@ -24,9 +32,12 @@ export default async function handler(req, res) {
     // GET AD SETS
     if (action === 'adsets') {
       const { campaignId } = req.query;
+      const insightsField = since && until
+        ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpc,actions}`
+        : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,actions}`;
       const url = campaignId
-        ? `${baseUrl}/${campaignId}/adsets?fields=id,name,status,targeting,daily_budget,optimization_goal,bid_strategy,insights.date_preset(last_30d){spend,impressions,clicks,ctr,cpc,actions}&access_token=${token}`
-        : `${baseUrl}/${adAccountId}/adsets?fields=id,name,status,campaign_id,targeting,daily_budget,optimization_goal,bid_strategy,insights.date_preset(last_30d){spend,impressions,clicks,ctr,cpc,actions}&access_token=${token}`;
+        ? `${baseUrl}/${campaignId}/adsets?fields=id,name,status,targeting,daily_budget,optimization_goal,bid_strategy,${insightsField}&access_token=${token}`
+        : `${baseUrl}/${adAccountId}/adsets?fields=id,name,status,campaign_id,targeting,daily_budget,optimization_goal,bid_strategy,${insightsField}&access_token=${token}`;
       const r = await fetch(url);
       const data = await r.json();
       return res.status(200).json(data);
@@ -34,9 +45,8 @@ export default async function handler(req, res) {
 
     // GET ACCOUNT INSIGHTS
     if (action === 'insights') {
-      const { preset = 'last_30d' } = req.query;
       const r = await fetch(
-        `${baseUrl}/${adAccountId}/insights?date_preset=${preset}&fields=spend,impressions,clicks,ctr,cpc,cpm,actions,action_values,cost_per_action_type,purchase_roas&access_token=${token}`
+        `${baseUrl}/${adAccountId}/insights?${dateParam}&fields=spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas&access_token=${token}`
       );
       const data = await r.json();
       return res.status(200).json(data);
