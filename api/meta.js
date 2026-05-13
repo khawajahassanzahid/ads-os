@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`
         : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`;
       const r = await fetch(
-        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&access_token=${token}`
+        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&filtering=[{"field":"effective_status","operator":"IN","value":["ACTIVE","PAUSED","ARCHIVED"]}]&access_token=${token}`
       );
       const data = await r.json();
       return res.status(200).json(data);
