@@ -139,6 +139,34 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
       // 2. Create ad sets
       for (const adSet of (wizard.adSets || [])) {
         try {
+          // For BOF retargeting ad sets: auto-create Custom Audience from Shopify lapsed customers
+          let targeting = adSet.targeting || { geo_locations: { countries: ["PK"] }, age_min: 20, age_max: 45, genders: [2] };
+          let audienceNote = null;
+
+          if (adSet.funnel === "BOF") {
+            try {
+              const shopRes = await fetch("/api/shopify?action=customers&segment=lapsed");
+              const shopData = await shopRes.json();
+              const emails = (shopData.customers || []).map(c => c.email).filter(Boolean);
+              if (emails.length > 0) {
+                const audRes = await fetch("/api/meta?action=create_audience", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    name: `JULKÉ — Lapsed Customers`,
+                    description: "90d+ no purchase — auto-created from Shopify",
+                    emails,
+                  }),
+                });
+                const audData = await audRes.json();
+                if (audData.id) {
+                  targeting = { ...targeting, custom_audiences: [{ id: audData.id }] };
+                  audienceNote = `Custom Audience created: ${audData.count} lapsed customers uploaded`;
+                }
+              }
+            } catch { /* continue without audience */ }
+          }
+
           const asRes = await fetch("/api/meta?action=create_adset", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -149,17 +177,19 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
               billing_event: "IMPRESSIONS",
               bid_strategy: adSet.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
               daily_budget: adSet.daily_budget || 1100000,
-              targeting: adSet.targeting || { geo_locations: { countries: ["PK"] }, age_min: 20, age_max: 45, genders: [2] },
+              targeting,
               status: "PAUSED",
-              promoted_object: { pixel_id: process.env.META_PIXEL_ID, custom_event_type: "PURCHASE" },
+              promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" },
             }),
           });
           const asData = await asRes.json();
           results.adSets.push({
             id: asData.id,
             name: adSet.name,
+            funnel: adSet.funnel,
             status: asData.id ? "created" : "failed",
             ads: adSet.ads || [],
+            audienceNote,
             error: asData.id ? null : JSON.stringify(asData),
           });
         } catch (e) {
@@ -377,17 +407,42 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#D8E0F0", marginBottom: 10 }}>Ad Sets Created:</div>
                     {pushResult.adSets.map((as, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, marginBottom: 6, background: as.status === "created" ? "#00C85310" : "#EF444410", border: `1px solid ${as.status === "created" ? "#00C85330" : "#EF444430"}` }}>
-                        <div style={{ fontSize: 12, color: "#D8E0F0" }}>{as.name}</div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#00C853" : "#EF4444" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
+                      <div key={i} style={{ background: as.status === "created" ? "#00C85310" : "#EF444410", border: `1px solid ${as.status === "created" ? "#00C85330" : "#EF444430"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: as.audienceNote ? 6 : 0 }}>
+                          <div style={{ fontSize: 12, color: "#D8E0F0", fontWeight: 600 }}>{as.name} <span style={{ color: "#4A5568", fontWeight: 400 }}>({as.funnel})</span></div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#00C853" : "#EF4444" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
+                        </div>
+                        {as.audienceNote && <div style={{ fontSize: 11, color: "#00C853", marginTop: 4 }}>👥 {as.audienceNote}</div>}
+                        {as.error && <div style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{as.error}</div>}
                       </div>
                     ))}
-                    <div style={{ background: "#F59E0B12", border: "1px solid #F59E0B30", borderRadius: 10, padding: "12px 16px", marginTop: 14 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#F59E0B", marginBottom: 6 }}>Next Step — Add Creatives</div>
-                      <div style={{ fontSize: 12, color: "#C8D3E8", lineHeight: 1.7 }}>
-                        Your campaign structure and copy are ready in Meta Ads Manager. Go to each ad set, create an ad, upload your image/video, and paste the copy from above. Then activate when ready.
+
+                    {/* Copy for Meta Ads Manager */}
+                    <div style={{ marginTop: 16, marginBottom: 6, fontSize: 13, fontWeight: 700, color: "#D8E0F0" }}>Ad Copy — paste into Meta Ads Manager</div>
+                    <div style={{ fontSize: 11, color: "#4A5568", marginBottom: 10 }}>Go to each ad set → Create Ad → paste this copy → upload your image/video → save as draft</div>
+                    {pushResult.adSets.filter(as => as.status === "created" && as.ads?.length).map((as, i) => (
+                      <div key={i} style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                        <div style={{ fontSize: 11, color: bc, fontWeight: 700, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.07em" }}>{as.name}</div>
+                        {as.ads.map((ad, j) => (
+                          <div key={j} style={{ background: "#0A0C14", border: `1px solid ${bc}20`, borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                            <div style={{ fontSize: 10, color: "#4A5568", marginBottom: 6, fontWeight: 700 }}>VARIATION {j + 1}</div>
+                            {[
+                              ["Headline", ad.headline],
+                              ["Primary Text", ad.primary_text],
+                              ["Description", ad.description],
+                              ["Website URL", ad.link || "https://julke.pk"],
+                              ["CTA", ad.call_to_action],
+                            ].map(([label, val]) => val ? (
+                              <div key={label} style={{ marginBottom: 6 }}>
+                                <div style={{ fontSize: 10, color: "#4A5568" }}>{label}</div>
+                                <div style={{ fontSize: 12, color: "#D8E0F0", background: "#06080F", borderRadius: 5, padding: "5px 8px", marginTop: 2, lineHeight: 1.5, userSelect: "all" }}>{val}</div>
+                              </div>
+                            ) : null)}
+                            {ad.image_note && <div style={{ fontSize: 11, color: "#F59E0B", marginTop: 6 }}>📸 {ad.image_note}</div>}
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    ))}
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
                       <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: bc, border: "none", borderRadius: 9, color: "#fff", padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Done</button>
                     </div>
