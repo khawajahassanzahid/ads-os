@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AIActions from "./AIActions";
 
 const PKR = (n) => {
   const v = parseFloat(n) || 0;
@@ -161,13 +162,22 @@ export default function Dashboard({ bc }) {
     if (!count) return;
     setAudienceLoading(prev => ({ ...prev, [segment]: true }));
     try {
-      const res = await fetch(`/api/shopify?action=customers&segment=${segment}`);
-      const data = await res.json();
-      // TODO: POST to /api/meta?action=create_audience with customer list
-      await new Promise(r => setTimeout(r, 800));
-      setAudienceDone(prev => ({ ...prev, [segment]: true }));
-    } catch {
-      alert("Audience push failed — Meta Custom Audience API coming next update.");
+      const shopRes = await fetch(`/api/shopify?action=customers&segment=${segment}`);
+      const shopData = await shopRes.json();
+      const emails = (shopData.customers || []).map(c => c.email).filter(Boolean);
+      const metaRes = await fetch("/api/meta?action=create_audience", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `JULKÉ — ${label}`, description: `${label} — ${count} customers`, emails }),
+      });
+      const result = await metaRes.json();
+      if (result.id) {
+        setAudienceDone(prev => ({ ...prev, [segment]: true }));
+      } else {
+        alert("Audience push failed: " + (result.error?.message || JSON.stringify(result)));
+      }
+    } catch (e) {
+      alert("Audience push failed: " + e.message);
     }
     setAudienceLoading(prev => ({ ...prev, [segment]: false }));
   };
@@ -302,6 +312,21 @@ export default function Dashboard({ bc }) {
             </div>
           ))}
         </div>
+
+        {/* ── AI ACTION CENTER ───────────────────────────────────── */}
+        {!loading && meta && (
+          <AIActions
+            bc={bc}
+            liveData={{
+              campaigns: meta?.campaigns,
+              insights: meta?.insights,
+              shopifySummary: shopSummary,
+              shopifyProducts: shopProducts,
+              customerCounts: shopCustomers?.counts,
+            }}
+            onCampaignCreated={() => loadAll()}
+          />
+        )}
 
         {/* ── CAMPAIGN WAR ROOM ───────────────────────────────────── */}
         <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>

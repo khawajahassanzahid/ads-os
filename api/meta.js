@@ -95,6 +95,54 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // UPDATE CAMPAIGN STATUS (pause / activate)
+    if (action === 'update_campaign_status' && req.method === 'POST') {
+      const { campaignId, status } = req.body;
+      const r = await fetch(`${baseUrl}/${campaignId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, access_token: token }),
+      });
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
+    // CREATE CUSTOM AUDIENCE from customer list
+    if (action === 'create_audience' && req.method === 'POST') {
+      const { name, description, emails } = req.body;
+      // Create the audience
+      const createRes = await fetch(`${baseUrl}/${adAccountId}/customaudiences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, description,
+          subtype: 'CUSTOM',
+          customer_file_source: 'USER_PROVIDED_ONLY',
+          access_token: token,
+        }),
+      });
+      const audience = await createRes.json();
+      if (!audience.id) return res.status(400).json(audience);
+
+      // Hash emails with SHA-256 and upload
+      const { createHash } = await import('crypto');
+      const hashed = (emails || [])
+        .filter(Boolean)
+        .map(e => createHash('sha256').update(e.toLowerCase().trim()).digest('hex'));
+
+      if (hashed.length > 0) {
+        await fetch(`${baseUrl}/${audience.id}/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payload: { schema: ['EMAIL_SHA256'], data: hashed.map(h => [h]) },
+            access_token: token,
+          }),
+        });
+      }
+      return res.status(200).json({ id: audience.id, name, count: hashed.length });
+    }
+
     // GET ACCOUNT SUMMARY
     if (action === 'account') {
       const r = await fetch(
