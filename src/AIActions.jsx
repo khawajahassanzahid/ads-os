@@ -128,7 +128,6 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
           name: wizard.campaign.name,
           objective: wizard.campaign.objective || "OUTCOME_SALES",
           status: "PAUSED",
-          daily_budget: wizard.campaign.daily_budget,
           special_ad_categories: [],
         }),
       });
@@ -167,22 +166,39 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             } catch { /* continue without audience */ }
           }
 
-          const asRes = await fetch("/api/meta?action=create_adset", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: adSet.name,
-              campaign_id: campData.id,
-              optimization_goal: adSet.optimization_goal || "PURCHASE",
-              billing_event: "IMPRESSIONS",
-              bid_strategy: adSet.bid_strategy || "LOWEST_COST_WITHOUT_CAP",
-              daily_budget: adSet.daily_budget || 1100000,
-              targeting,
-              status: "PAUSED",
-              promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" },
-            }),
+          // Strip AI-generated interests (they have no valid IDs) — use clean geo/age/gender targeting
+          const cleanTargeting = {
+            geo_locations: targeting.geo_locations || { countries: ["PK"] },
+            age_min: targeting.age_min || 20,
+            age_max: targeting.age_max || 45,
+            genders: targeting.genders || [2],
+            ...(targeting.custom_audiences ? { custom_audiences: targeting.custom_audiences } : {}),
+          };
+
+          const buildAdSetBody = (optGoal) => ({
+            name: adSet.name,
+            campaign_id: campData.id,
+            optimization_goal: optGoal,
+            billing_event: "IMPRESSIONS",
+            bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+            daily_budget: adSet.daily_budget || 1100000,
+            targeting: cleanTargeting,
+            status: "PAUSED",
+            ...(optGoal === "PURCHASE" ? { promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" } } : {}),
           });
-          const asData = await asRes.json();
+
+          let asData = null;
+          // Try PURCHASE first, fall back to LINK_CLICKS if Meta rejects it
+          for (const goal of ["PURCHASE", "LINK_CLICKS"]) {
+            const asRes = await fetch("/api/meta?action=create_adset", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(buildAdSetBody(goal)),
+            });
+            asData = await asRes.json();
+            if (asData.id) break;
+          }
+
           results.adSets.push({
             id: asData.id,
             name: adSet.name,

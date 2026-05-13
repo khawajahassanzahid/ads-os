@@ -83,7 +83,8 @@ export default function Dashboard({ bc }) {
         fetch(`/api/shopify?action=products&${dateQ}`).then(r => r.json()),
         fetch("/api/shopify?action=customers").then(r => r.json()),
       ]);
-      setMeta({ account: acct, campaigns: camps.data || [], insights: insights.data?.[0] || {} });
+      const liveCampaigns = (camps.data || []).filter(c => c.status !== "DELETED" && c.effective_status !== "DELETED");
+      setMeta({ account: acct, campaigns: liveCampaigns, insights: insights.data?.[0] || {} });
       setShopSummary(summary);
       setShopProducts(products.products || []);
       setShopCustomers(customers);
