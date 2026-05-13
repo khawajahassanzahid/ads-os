@@ -94,7 +94,7 @@ Rules:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
+        max_tokens: 2500,
         system: systemPrompt,
         messages: [{ role: 'user', content: `Analyze this data and return suggestions:\n${JSON.stringify(context, null, 2)}` }],
       }),
@@ -105,7 +105,18 @@ Rules:
     if (!text) return res.status(200).json({ error: `Claude returned no text. Full response: ${JSON.stringify(data).slice(0, 300)}` });
     const match = text.match(/\{[\s\S]*\}/)?.[0];
     if (!match) return res.status(200).json({ error: `Could not find JSON in Claude response: ${text.slice(0, 300)}` });
-    const json = JSON.parse(match);
+    let json;
+    try {
+      json = JSON.parse(match);
+    } catch (parseErr) {
+      // Try stripping trailing commas and re-parsing
+      const cleaned = match.replace(/,\s*([}\]])/g, '$1');
+      try {
+        json = JSON.parse(cleaned);
+      } catch {
+        return res.status(200).json({ error: `JSON parse failed: ${parseErr.message}. Raw: ${match.slice(0, 400)}` });
+      }
+    }
     return res.status(200).json(json);
   } catch (err) {
     return res.status(500).json({ error: err.message });
