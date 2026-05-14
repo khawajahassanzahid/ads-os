@@ -191,24 +191,31 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" },
           };
 
-          const asRes = await fetch("/api/meta?action=create_adset", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(adSetBody),
-          });
-          const asData = await asRes.json();
+          let asData = null;
+          let asError = null;
+          try {
+            const asRes = await fetch("/api/meta?action=create_adset", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(adSetBody),
+            });
+            asData = await asRes.json();
+          } catch (fetchErr) {
+            asError = "Fetch failed: " + fetchErr.message;
+          }
 
           results.adSets.push({
-            id: asData.id,
+            id: asData?.id,
             name: adSet.name,
             funnel: adSet.funnel,
-            status: asData.id ? "created" : "failed",
+            status: asData?.id ? "created" : "failed",
             ads: adSet.ads || [],
             audienceNote,
-            error: asData.id ? null : JSON.stringify(asData),
+            sentBody: JSON.stringify(adSetBody, null, 2),
+            error: asError || (asData?.id ? null : JSON.stringify(asData, null, 2)),
           });
         } catch (e) {
-          results.adSets.push({ name: adSet.name, status: "failed", error: e.message });
+          results.adSets.push({ name: adSet.name, funnel: adSet.funnel, status: "failed", error: "Outer catch: " + e.message });
         }
       }
       setPushResult(results);
@@ -415,7 +422,10 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                   <div style={{ color: "#EF4444", fontSize: 13, padding: "20px 0" }}>Failed: {pushResult.error}</div>
                 ) : (
                   <>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: "#00C853", marginBottom: 16 }}>✓ Campaign created in Meta (PAUSED)</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: "#00C853", marginBottom: 4 }}>✓ Campaign created in Meta (PAUSED)</div>
+                    <div style={{ fontSize: 12, color: pushResult.adSets.filter(a=>a.status==="created").length > 0 ? "#00C853" : "#EF4444", marginBottom: 16 }}>
+                      {pushResult.adSets.filter(a=>a.status==="created").length} of {pushResult.adSets.length} ad sets created
+                    </div>
                     <div style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
                       <div style={{ fontSize: 12, color: "#4A5568", marginBottom: 4 }}>Campaign ID</div>
                       <div style={{ fontSize: 13, color: "#D8E0F0", fontWeight: 600 }}>{pushResult.campaign?.name} — {pushResult.campaign?.id}</div>
@@ -428,7 +438,12 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                           <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#00C853" : "#EF4444" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
                         </div>
                         {as.audienceNote && <div style={{ fontSize: 11, color: "#00C853", marginTop: 4 }}>👥 {as.audienceNote}</div>}
-                        {as.error && <div style={{ fontSize: 11, color: "#EF4444", marginTop: 6, background: "#EF444418", borderRadius: 6, padding: "6px 8px", wordBreak: "break-all" }}>Meta error: {as.error}</div>}
+                        {as.error && (
+                          <div style={{ marginTop: 6 }}>
+                            <div style={{ fontSize: 11, color: "#EF4444", background: "#EF444418", borderRadius: 6, padding: "6px 8px", wordBreak: "break-all", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>ERROR: {as.error}</div>
+                            {as.sentBody && <div style={{ fontSize: 10, color: "#4A5568", background: "#06080F", borderRadius: 6, padding: "6px 8px", marginTop: 4, wordBreak: "break-all", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>SENT: {as.sentBody}</div>}
+                          </div>
+                        )}
                       </div>
                     ))}
 
