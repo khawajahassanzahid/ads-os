@@ -331,6 +331,9 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 17, color: "#D8E0F0" }}>{wizard.campaign?.name}</div>
                     <div style={{ fontSize: 12, color: "#4A5568", marginTop: 3 }}>{wizard.summary}</div>
+                    <div style={{ fontSize: 11, marginTop: 4, color: (wizard.adSets?.length > 0) ? "#00C853" : "#EF4444", fontWeight: 700 }}>
+                      {wizard.adSets?.length > 0 ? `✓ ${wizard.adSets.length} ad sets loaded` : "⚠️ 0 ad sets — AI response incomplete, close and try Build Campaign again"}
+                    </div>
                   </div>
                   <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: "none", border: "none", color: "#4A5568", fontSize: 22, cursor: "pointer", padding: "0 4px" }}>×</button>
                 </div>
@@ -403,12 +406,12 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                       <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: "transparent", border: "1px solid #2A3550", borderRadius: 9, color: "#4A5568", padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
                       <button
                         onClick={pushToMeta}
-                        disabled={pushing}
-                        style={{ background: bc, border: "none", borderRadius: 9, color: "#fff", padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: pushing ? "not-allowed" : "pointer", opacity: pushing ? 0.7 : 1, display: "flex", alignItems: "center", gap: 7 }}
+                        disabled={pushing || !wizard.adSets?.length}
+                        style={{ background: bc, border: "none", borderRadius: 9, color: "#fff", padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: (pushing || !wizard.adSets?.length) ? "not-allowed" : "pointer", opacity: (pushing || !wizard.adSets?.length) ? 0.4 : 1, display: "flex", alignItems: "center", gap: 7 }}
                       >
                         {pushing
                           ? <><div style={{ width: 13, height: 13, border: "2px solid #fff4", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> Creating in Meta…</>
-                          : "→ Push to Meta (Paused)"}
+                          : `→ Push to Meta (${wizard.adSets?.length || 0} ad sets, Paused)`}
                       </button>
                     </div>
                   </>
