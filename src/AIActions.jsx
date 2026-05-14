@@ -172,6 +172,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             age_min: targeting.age_min || 20,
             age_max: targeting.age_max || 45,
             genders: targeting.genders || [2],
+            targeting_automation: { advantage_audience: 0 },
             ...(targeting.custom_audiences ? { custom_audiences: targeting.custom_audiences } : {}),
           };
 
