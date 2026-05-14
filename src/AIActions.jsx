@@ -166,14 +166,18 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             } catch { /* continue without audience */ }
           }
 
-          // Strip AI-generated interests (they have no valid IDs) — use clean geo/age/gender targeting
+          // Strip AI-generated interests/cities (no valid IDs) — keep only countries + age/gender
           const cleanTargeting = {
-            geo_locations: targeting.geo_locations || { countries: ["PK"] },
+            geo_locations: { countries: (targeting.geo_locations?.countries || ["PK"]) },
             age_min: targeting.age_min || 20,
             age_max: targeting.age_max || 45,
             genders: targeting.genders || [2],
             ...(targeting.custom_audiences ? { custom_audiences: targeting.custom_audiences } : {}),
           };
+
+          // Enforce minimum budget — Meta requires > PKR 280, use at least PKR 1,000 (100000 paisas)
+          const MIN_BUDGET = 100000;
+          const dailyBudget = Math.max(adSet.daily_budget || 1100000, MIN_BUDGET);
 
           const adSetBody = {
             name: adSet.name,
@@ -181,7 +185,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             optimization_goal: "OFFSITE_CONVERSIONS",
             billing_event: "IMPRESSIONS",
             bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-            daily_budget: adSet.daily_budget || 1100000,
+            daily_budget: dailyBudget,
             targeting: cleanTargeting,
             status: "PAUSED",
             promoted_object: { pixel_id: "159491121353858", custom_event_type: "PURCHASE" },
