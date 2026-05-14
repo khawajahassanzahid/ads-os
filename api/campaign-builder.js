@@ -91,14 +91,21 @@ Write all copy. Make it specific to JULKÉ and ${theme || 'footwear sales'}. If 
     const data = await r.json();
     if (data.error) return res.status(200).json({ error: `Claude API: ${data.error.type} — ${data.error.message}` });
     const text = data.content?.[0]?.text || '';
-    const match = text.match(/\{[\s\S]*\}/)?.[0] || '{}';
+    if (!text) return res.status(200).json({ error: `Claude returned no text. Stop reason: ${data.stop_reason}. Usage: ${JSON.stringify(data.usage)}` });
+    const match = text.match(/\{[\s\S]*\}/)?.[0];
+    if (!match) return res.status(200).json({ error: `No JSON found in response. Text preview: ${text.slice(0, 300)}` });
     let json;
     try {
       json = JSON.parse(match);
-    } catch {
+    } catch (parseErr) {
       const cleaned = match.replace(/,\s*([}\]])/g, '$1');
-      json = JSON.parse(cleaned);
+      try {
+        json = JSON.parse(cleaned);
+      } catch {
+        return res.status(200).json({ error: `JSON parse failed: ${parseErr.message}. Raw (first 400 chars): ${match.slice(0, 400)}` });
+      }
     }
+    if (!json.adSets?.length) return res.status(200).json({ error: `Claude returned JSON with no adSets. Keys found: ${Object.keys(json).join(', ')}. Raw: ${JSON.stringify(json).slice(0, 400)}` });
     return res.status(200).json(json);
   } catch (err) {
     return res.status(500).json({ error: err.message, raw: err.toString() });

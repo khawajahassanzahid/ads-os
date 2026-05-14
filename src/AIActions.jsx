@@ -108,8 +108,12 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
         }),
       });
       const data = await r.json();
-      setWizard(data);
-    } catch { setWizard({ error: "Could not generate campaign. Try again." }); }
+      if (data.error) {
+        setWizard({ error: `API error: ${data.error}` });
+      } else {
+        setWizard(data);
+      }
+    } catch (e) { setWizard({ error: `Request failed: ${e.message}` }); }
     setWizardLoading(false);
   };
 
