@@ -124,6 +124,14 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
     const results = { campaign: null, adSets: [], errors: [] };
 
     try {
+      // 0. Fetch existing image hashes to use as placeholders for ads
+      let imageHashes = [];
+      try {
+        const hashRes = await fetch("/api/meta?action=image_hashes");
+        const hashData = await hashRes.json();
+        imageHashes = hashData.hashes || [];
+      } catch { /* continue without images */ }
+
       // 1. Create campaign
       const campRes = await fetch("/api/meta?action=create_campaign", {
         method: "POST",
@@ -209,16 +217,51 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             asError = "Fetch failed: " + fetchErr.message;
           }
 
-          results.adSets.push({
+          const adSetResult = {
             id: asData?.id,
             name: adSet.name,
             funnel: adSet.funnel,
             status: asData?.id ? "created" : "failed",
-            ads: adSet.ads || [],
             audienceNote,
+            createdAds: [],
             sentBody: JSON.stringify(adSetBody, null, 2),
             error: asError || (asData?.id ? null : JSON.stringify(asData, null, 2)),
-          });
+          };
+
+          // 3. Create ads for this ad set (if ad set was created and we have an image hash)
+          if (asData?.id && imageHashes.length > 0) {
+            for (let adIdx = 0; adIdx < (adSet.ads || []).length; adIdx++) {
+              const ad = adSet.ads[adIdx];
+              const imageHash = imageHashes[adIdx % imageHashes.length];
+              try {
+                const adRes = await fetch("/api/meta?action=create_ad", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    adset_id: asData.id,
+                    name: ad.name || `${adSet.name} — Ad ${adIdx + 1}`,
+                    primary_text: ad.primary_text,
+                    headline: ad.headline,
+                    description: ad.description,
+                    link: ad.link || "https://julke.pk",
+                    call_to_action: ad.call_to_action || "SHOP_NOW",
+                    image_hash: imageHash,
+                  }),
+                });
+                const adData = await adRes.json();
+                adSetResult.createdAds.push({
+                  name: ad.name,
+                  status: adData.id ? "created" : "failed",
+                  id: adData.id,
+                  error: adData.id ? null : JSON.stringify(adData),
+                });
+              } catch (adErr) {
+                adSetResult.createdAds.push({ name: ad.name, status: "failed", error: adErr.message });
+              }
+            }
+          }
+
+          results.adSets.push(adSetResult);
         } catch (e) {
           results.adSets.push({ name: adSet.name, funnel: adSet.funnel, status: "failed", error: "Outer catch: " + e.message });
         }
@@ -446,10 +489,21 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                           <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#00C853" : "#EF4444" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
                         </div>
                         {as.audienceNote && <div style={{ fontSize: 11, color: "#00C853", marginTop: 4 }}>👥 {as.audienceNote}</div>}
+                        {as.createdAds?.length > 0 && (
+                          <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {as.createdAds.map((ad, ai) => (
+                              <span key={ai} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: ad.status === "created" ? "#00C85318" : "#EF444418", color: ad.status === "created" ? "#00C853" : "#EF4444", border: `1px solid ${ad.status === "created" ? "#00C85330" : "#EF444430"}` }}>
+                                {ad.status === "created" ? `✓ Ad ${ai + 1}` : `✗ Ad ${ai + 1}: ${ad.error?.slice(0, 60)}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {!as.error && as.status === "created" && !as.createdAds?.length && (
+                          <div style={{ fontSize: 11, color: "#F59E0B", marginTop: 4 }}>⚠️ No existing images found — add ads manually in Meta Ads Manager</div>
+                        )}
                         {as.error && (
                           <div style={{ marginTop: 6 }}>
                             <div style={{ fontSize: 11, color: "#EF4444", background: "#EF444418", borderRadius: 6, padding: "6px 8px", wordBreak: "break-all", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>ERROR: {as.error}</div>
-                            {as.sentBody && <div style={{ fontSize: 10, color: "#4A5568", background: "#06080F", borderRadius: 6, padding: "6px 8px", marginTop: 4, wordBreak: "break-all", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>SENT: {as.sentBody}</div>}
                           </div>
                         )}
                       </div>

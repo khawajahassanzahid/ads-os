@@ -95,6 +95,60 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // GET EXISTING IMAGE HASHES from account ads (for use as placeholders)
+    if (action === 'image_hashes') {
+      const r = await fetch(
+        `${baseUrl}/${adAccountId}/ads?fields=creative{image_hash,thumbnail_url}&limit=20&effective_status[]=ACTIVE&access_token=${token}`
+      );
+      const data = await r.json();
+      const hashes = (data.data || [])
+        .map(a => a.creative?.image_hash)
+        .filter(Boolean);
+      return res.status(200).json({ hashes: [...new Set(hashes)] });
+    }
+
+    // CREATE AD with creative (copy + existing image hash)
+    if (action === 'create_ad' && req.method === 'POST') {
+      const { adset_id, name, primary_text, headline, description, link, call_to_action, image_hash } = req.body;
+      // 1. Create the ad creative
+      const creativeRes = await fetch(`${baseUrl}/${adAccountId}/adcreatives`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${name} — Creative`,
+          object_story_spec: {
+            page_id: process.env.META_PAGE_ID,
+            link_data: {
+              image_hash,
+              link: link || 'https://julke.pk',
+              message: primary_text,
+              name: headline,
+              description: description || '',
+              call_to_action: { type: call_to_action || 'SHOP_NOW', value: { link: link || 'https://julke.pk' } },
+            },
+          },
+          access_token: token,
+        }),
+      });
+      const creative = await creativeRes.json();
+      if (!creative.id) return res.status(200).json({ error: 'Creative failed', detail: creative });
+
+      // 2. Create the ad
+      const adRes = await fetch(`${baseUrl}/${adAccountId}/ads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          adset_id,
+          creative: { creative_id: creative.id },
+          status: 'PAUSED',
+          access_token: token,
+        }),
+      });
+      const ad = await adRes.json();
+      return res.status(200).json(ad);
+    }
+
     // UPDATE CAMPAIGN STATUS (pause / activate)
     if (action === 'update_campaign_status' && req.method === 'POST') {
       const { campaignId, status } = req.body;
