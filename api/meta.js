@@ -95,13 +95,30 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // GET EXISTING IMAGE HASHES from account image library
+    // GET EXISTING IMAGE HASHES from account image library (upload placeholder if none exist)
     if (action === 'image_hashes') {
       const r = await fetch(
-        `${baseUrl}/${adAccountId}/adimages?fields=hash,name,url_128&limit=20&access_token=${token}`
+        `${baseUrl}/${adAccountId}/adimages?fields=hash,name&limit=20&access_token=${token}`
       );
       const data = await r.json();
-      const hashes = (data.data || []).map(img => img.hash).filter(Boolean);
+      let hashes = (data.data || []).map(img => img.hash).filter(Boolean);
+
+      // If no images in account, upload a placeholder so ads can be created
+      if (hashes.length === 0) {
+        const uploadRes = await fetch(`${baseUrl}/${adAccountId}/adimages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: 'https://placehold.co/1200x628/1a1a2e/ffffff?text=JULKE+Ad+Placeholder',
+            name: 'JULKE_placeholder',
+            access_token: token,
+          }),
+        });
+        const uploadData = await uploadRes.json();
+        const newHash = Object.values(uploadData.images || {})[0]?.hash;
+        if (newHash) hashes = [newHash];
+      }
+
       return res.status(200).json({ hashes });
     }
 
