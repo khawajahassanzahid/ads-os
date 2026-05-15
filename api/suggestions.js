@@ -82,7 +82,9 @@ Rules:
 - Flag seasonal opportunity if theme provided
 - Flag top-selling products with no obvious campaign as opportunities
 - Flag lapsed customers not being retargeted
-- Be brutally specific: name campaign names, use exact PKR numbers`;
+- Be brutally specific: name campaign names, use exact PKR numbers
+- Keep reason under 30 words, action under 20 words, impact under 15 words — be dense not verbose
+- Return maximum 5 suggestions`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -94,7 +96,7 @@ Rules:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2500,
+        max_tokens: 4000,
         system: systemPrompt,
         messages: [{ role: 'user', content: `Analyze this data and return suggestions:\n${JSON.stringify(context, null, 2)}` }],
       }),
