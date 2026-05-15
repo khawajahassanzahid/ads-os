@@ -95,16 +95,14 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // GET EXISTING IMAGE HASHES from account ads (for use as placeholders)
+    // GET EXISTING IMAGE HASHES from account image library
     if (action === 'image_hashes') {
       const r = await fetch(
-        `${baseUrl}/${adAccountId}/ads?fields=creative{image_hash,thumbnail_url}&limit=20&effective_status[]=ACTIVE&access_token=${token}`
+        `${baseUrl}/${adAccountId}/adimages?fields=hash,name,url_128&limit=20&access_token=${token}`
       );
       const data = await r.json();
-      const hashes = (data.data || [])
-        .map(a => a.creative?.image_hash)
-        .filter(Boolean);
-      return res.status(200).json({ hashes: [...new Set(hashes)] });
+      const hashes = (data.data || []).map(img => img.hash).filter(Boolean);
+      return res.status(200).json({ hashes });
     }
 
     // CREATE AD with creative (copy + existing image hash)
