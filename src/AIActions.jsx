@@ -492,9 +492,9 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                         {as.createdAds?.length > 0 && (
                           <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {as.createdAds.map((ad, ai) => (
-                              <span key={ai} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: ad.status === "created" ? "#00C85318" : "#EF444418", color: ad.status === "created" ? "#00C853" : "#EF4444", border: `1px solid ${ad.status === "created" ? "#00C85330" : "#EF444430"}` }}>
-                                {ad.status === "created" ? `✓ Ad ${ai + 1}` : `✗ Ad ${ai + 1}: ${ad.error?.slice(0, 60)}`}
-                              </span>
+                              <div key={ai} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: ad.status === "created" ? "#00C85318" : "#EF444418", color: ad.status === "created" ? "#00C853" : "#EF4444", border: `1px solid ${ad.status === "created" ? "#00C85330" : "#EF444430"}`, wordBreak: "break-all" }}>
+                                {ad.status === "created" ? `✓ Ad ${ai + 1} created` : `✗ Ad ${ai + 1}: ${ad.error}`}
+                              </div>
                             ))}
                           </div>
                         )}

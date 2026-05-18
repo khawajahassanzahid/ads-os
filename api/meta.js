@@ -125,6 +125,8 @@ export default async function handler(req, res) {
     // CREATE AD with creative (copy + existing image hash)
     if (action === 'create_ad' && req.method === 'POST') {
       const { adset_id, name, primary_text, headline, description, link, call_to_action, image_hash } = req.body;
+      const adLink = link || 'https://julke.pk';
+      const ctaType = (call_to_action || 'SHOP_NOW').replace(/ /g, '_').toUpperCase();
       // 1. Create the ad creative
       const creativeRes = await fetch(`${baseUrl}/${adAccountId}/adcreatives`, {
         method: 'POST',
@@ -135,18 +137,18 @@ export default async function handler(req, res) {
             page_id: process.env.META_PAGE_ID,
             link_data: {
               image_hash,
-              link: link || 'https://julke.pk',
-              message: primary_text,
-              name: headline,
-              description: description || '',
-              call_to_action: { type: call_to_action || 'SHOP_NOW', value: { link: link || 'https://julke.pk' } },
+              link: adLink,
+              message: (primary_text || '').slice(0, 2200),
+              name: (headline || '').slice(0, 255),
+              description: (description || '').slice(0, 255),
+              call_to_action: { type: ctaType, value: { link: adLink } },
             },
           },
           access_token: token,
         }),
       });
       const creative = await creativeRes.json();
-      if (!creative.id) return res.status(200).json({ error: 'Creative failed', detail: creative });
+      if (!creative.id) return res.status(200).json({ error: `Creative failed: ${creative.error?.message || JSON.stringify(creative)}` });
 
       // 2. Create the ad
       const adRes = await fetch(`${baseUrl}/${adAccountId}/ads`, {
