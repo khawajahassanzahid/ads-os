@@ -127,6 +127,9 @@ export default async function handler(req, res) {
       const { adset_id, name, primary_text, headline, description, link, call_to_action, image_hash } = req.body;
       const adLink = link || 'https://julke.pk';
       const ctaType = (call_to_action || 'SHOP_NOW').replace(/ /g, '_').toUpperCase();
+      const pageId = process.env.META_PAGE_ID;
+      if (!pageId) return res.status(200).json({ error: 'META_PAGE_ID env var not set' });
+      if (!image_hash) return res.status(200).json({ error: 'No image_hash provided' });
       // 1. Create the ad creative
       const creativeRes = await fetch(`${baseUrl}/${adAccountId}/adcreatives`, {
         method: 'POST',
@@ -134,7 +137,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           name: `${name} — Creative`,
           object_story_spec: {
-            page_id: process.env.META_PAGE_ID,
+            page_id: pageId,
             link_data: {
               image_hash,
               link: adLink,
@@ -148,7 +151,7 @@ export default async function handler(req, res) {
         }),
       });
       const creative = await creativeRes.json();
-      if (!creative.id) return res.status(200).json({ error: `Creative failed: ${creative.error?.message || JSON.stringify(creative)}` });
+      if (!creative.id) return res.status(200).json({ error: `Creative failed: ${creative.error?.error_user_msg || creative.error?.message} (subcode: ${creative.error?.error_subcode}) — ${JSON.stringify(creative.error)}` });
 
       // 2. Create the ad
       const adRes = await fetch(`${baseUrl}/${adAccountId}/ads`, {
