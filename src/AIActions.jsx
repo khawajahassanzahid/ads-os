@@ -1,4 +1,6 @@
 import { useState } from "react";
+import CampaignChecklist from "./CampaignChecklist";
+import { saveCampaign, needsSetup, getCampaign } from "./CampaignTracker";
 
 const PKR = (n) => {
   const v = parseFloat(n) || 0;
@@ -36,7 +38,13 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
       const r = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...liveData, theme: theme || undefined }),
+        body: JSON.stringify({
+          ...liveData,
+          theme: theme || undefined,
+          pendingSetup: Object.values(
+            JSON.parse(localStorage.getItem("julke_campaigns") || "{}")
+          ).filter(c => !c.checklist.approved).map(c => c.name),
+        }),
       });
       const data = await r.json();
       if (data.error) {
@@ -265,6 +273,10 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
         } catch (e) {
           results.adSets.push({ name: adSet.name, funnel: adSet.funnel, status: "failed", error: "Outer catch: " + e.message });
         }
+      }
+      // Save campaign to local tracker so checklist persists
+      if (results.campaign?.id) {
+        saveCampaign(results.campaign, results.adSets);
       }
       setPushResult(results);
       onCampaignCreated?.();
@@ -535,6 +547,15 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                         ))}
                       </div>
                     ))}
+                    {pushResult.campaign?.id && (
+                      <CampaignChecklist
+                        campaignId={pushResult.campaign.id}
+                        campaignName={pushResult.campaign.name}
+                        bc={bc}
+                        onReady={() => onCampaignCreated?.()}
+                      />
+                    )}
+
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
                       <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: bc, border: "none", borderRadius: 9, color: "#fff", padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Done</button>
                     </div>

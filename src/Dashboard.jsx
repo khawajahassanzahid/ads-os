@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import AIActions from "./AIActions";
+import { needsSetup, getCampaign } from "./CampaignTracker";
 
 const PKR = (n) => {
   const v = parseFloat(n) || 0;
@@ -375,7 +376,14 @@ export default function Dashboard({ bc }) {
                     <span style={{ fontSize: 9, color: "#4A5568", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 12, color: "#D8E0F0", lineHeight: 1.3 }}>{c.name}</div>
-                      <div style={{ fontSize: 10, color: "#4A5568", marginTop: 2 }}>{c.objective}</div>
+                      <div style={{ fontSize: 10, color: "#4A5568", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                        {c.objective}
+                        {needsSetup(c.id) && (
+                          <span style={{ background: "#F59E0B18", color: "#F59E0B", border: "1px solid #F59E0B30", borderRadius: 4, padding: "1px 5px", fontSize: 9, fontWeight: 700 }}>
+                            ⚠️ NEEDS SETUP
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <span style={{ background: isActive ? "#00C85318" : "#1E2535", color: isActive ? "#00C853" : "#4A5568", border: `1px solid ${isActive ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{c.status}</span>

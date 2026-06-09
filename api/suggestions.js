@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { campaigns, insights, shopifySummary, shopifyProducts, customerCounts, theme } = req.body;
+  const { campaigns, insights, shopifySummary, shopifyProducts, customerCounts, theme, pendingSetup } = req.body;
 
   const activeCamps = (campaigns || []).filter(c => c.status === 'ACTIVE').map(c => {
     const ci = c.insights?.data?.[0] || {};
@@ -48,6 +48,7 @@ export default async function handler(req, res) {
     },
     customers: customerCounts,
     theme: theme || null,
+    pendingSetup: pendingSetup || [],
   };
 
   const systemPrompt = `You are an elite Meta Ads strategist for JULKÉ — a premium Pakistani footwear brand (heels, flats, bags, mules). Store: julke.pk. Monthly target: PKR 10M. Meta budget: PKR 1M/month. Required ROAS: 7-10x.
@@ -84,7 +85,8 @@ Rules:
 - Flag lapsed customers not being retargeted
 - Be brutally specific: name campaign names, use exact PKR numbers
 - Keep reason under 30 words, action under 20 words, impact under 15 words — be dense not verbose
-- Return maximum 5 suggestions`;
+- Return maximum 5 suggestions
+- IMPORTANT: If a campaign appears in pendingSetup[], it was just created and needs images/copy added before activating. Do NOT suggest activating these — instead suggest "Complete Setup" with type "fix_budget" explaining they need to add real images in Meta Ads Manager`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
