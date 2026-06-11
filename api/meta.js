@@ -54,13 +54,14 @@ export default async function handler(req, res) {
 
     // CREATE CAMPAIGN
     if (action === 'create_campaign' && req.method === 'POST') {
-      const { name, objective, status, daily_budget, special_ad_categories } = req.body;
+      const { name, objective, status, daily_budget, special_ad_categories, is_adset_budget_sharing_enabled } = req.body;
       const r = await fetch(`${baseUrl}/${adAccountId}/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, objective, status: status || 'PAUSED',
           daily_budget, special_ad_categories: special_ad_categories || [],
+          is_adset_budget_sharing_enabled: is_adset_budget_sharing_enabled ?? false,
           access_token: token
         })
       });
