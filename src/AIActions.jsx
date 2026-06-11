@@ -149,6 +149,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
           objective: wizard.campaign.objective || "OUTCOME_SALES",
           status: "PAUSED",
           special_ad_categories: [],
+          is_adset_budget_sharing_enabled: false,
         }),
       });
       const campData = await campRes.json();
