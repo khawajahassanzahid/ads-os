@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import AIActions from "./AIActions";
 import { needsSetup, getCampaign } from "./CampaignTracker";
+import { getCurrencySymbol } from "./App";
 
-const PKR = (n) => {
+const PKR = (n, sym = "₨") => {
   const v = parseFloat(n) || 0;
-  if (v >= 1000000) return `₨${(v / 1000000).toFixed(1)}M`;
-  if (v >= 1000) return `₨${(v / 1000).toFixed(0)}K`;
-  return `₨${Math.round(v).toLocaleString()}`;
+  if (v >= 1000000) return `${sym}${(v / 1000000).toFixed(1)}M`;
+  if (v >= 1000) return `${sym}${(v / 1000).toFixed(0)}K`;
+  return `${sym}${Math.round(v).toLocaleString()}`;
 };
 
 const NUM = (n) => {
@@ -32,8 +33,9 @@ const roasBg = (r) => {
   return "transparent";
 };
 
-const TARGET = 10000000;
-const BUDGET = 1000000;
+// Per-brand targets, falling back to sane defaults if a brand hasn't set them yet.
+const DEFAULT_TARGET = 10000000;
+const DEFAULT_BUDGET = 1000000;
 
 const PRESETS = [
   { key: "today",       label: "Today" },
@@ -46,7 +48,7 @@ const PRESETS = [
   { key: "custom",      label: "Custom" },
 ];
 
-export default function Dashboard({ bc }) {
+export default function Dashboard({ bc, activeBrand }) {
   const [meta, setMeta] = useState(null);
   const [shopSummary, setShopSummary] = useState(null);
   const [shopProducts, setShopProducts] = useState([]);
@@ -67,6 +69,7 @@ export default function Dashboard({ bc }) {
   const [expandedAs, setExpandedAs] = useState({});   // adsetId → true
   const [ads, setAds] = useState({});                 // adsetId → []
   const [adsLoading, setAdsLoading] = useState({});
+  const [google, setGoogle] = useState(null);          // { campaigns, liveCampaigns, totalCampaigns } or null/error
 
   useEffect(() => { loadAll(); }, []);
 
@@ -77,19 +80,21 @@ export default function Dashboard({ bc }) {
     const isCustom = p === "custom" && cf && ct;
     const dateQ = isCustom ? `since=${cf}&until=${ct}` : `preset=${p}`;
     try {
-      const [acct, camps, insights, summary, products, customers] = await Promise.all([
-        fetch("/api/meta?action=account").then(r => r.json()),
-        fetch(`/api/meta?action=campaigns&${dateQ}`).then(r => r.json()),
-        fetch(`/api/meta?action=insights&${dateQ}`).then(r => r.json()),
-        fetch(`/api/shopify?action=summary&${dateQ}`).then(r => r.json()),
-        fetch(`/api/shopify?action=products&${dateQ}`).then(r => r.json()),
-        fetch("/api/shopify?action=customers").then(r => r.json()),
+      const [acct, camps, insights, summary, products, customers, googleData] = await Promise.all([
+        fetch(`/api/meta?action=account&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/meta?action=campaigns&${dateQ}&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/meta?action=insights&${dateQ}&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/shopify?action=summary&${dateQ}&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/shopify?action=products&${dateQ}&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/shopify?action=customers&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/google?action=campaigns&${dateQ}&brand=${activeBrand?.id}`).then(r => r.json()).catch(() => null),
       ]);
       const liveCampaigns = (camps.data || []).filter(c => c.status !== "DELETED" && c.effective_status !== "DELETED");
       setMeta({ account: acct, campaigns: liveCampaigns, insights: insights.data?.[0] || {} });
       setShopSummary(summary);
       setShopProducts(products.products || []);
       setShopCustomers(customers);
+      setGoogle(googleData && !googleData.error ? googleData : { notConnected: true, message: googleData?.message });
     } catch (e) {
       if (!silent) setError("Failed to load data. Check your API connections.");
     }
@@ -103,7 +108,7 @@ export default function Dashboard({ bc }) {
     if (adsets[campId]) return;
     setAdsetsLoading(p => ({ ...p, [campId]: true }));
     try {
-      const r = await fetch(`/api/meta?action=adsets&campaignId=${campId}&${dateQ}`);
+      const r = await fetch(`/api/meta?action=adsets&campaignId=${campId}&${dateQ}&brand=${activeBrand?.id}`);
       const d = await r.json();
       setAdsets(p => ({ ...p, [campId]: d.data || [] }));
     } catch { setAdsets(p => ({ ...p, [campId]: [] })); }
@@ -116,7 +121,7 @@ export default function Dashboard({ bc }) {
     if (ads[asId]) return;
     setAdsLoading(p => ({ ...p, [asId]: true }));
     try {
-      const r = await fetch(`/api/meta?action=ads&adsetId=${asId}&${dateQ}`);
+      const r = await fetch(`/api/meta?action=ads&adsetId=${asId}&${dateQ}&brand=${activeBrand?.id}`);
       const d = await r.json();
       setAds(p => ({ ...p, [asId]: d.data || [] }));
     } catch { setAds(p => ({ ...p, [asId]: [] })); }
@@ -147,10 +152,10 @@ export default function Dashboard({ bc }) {
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 900,
-          system: `You are the performance marketing brain for JULKÉ — a premium Pakistani footwear brand (heels, flats, bags, mules). You think like an elite Meta Ads expert. Monthly revenue target: PKR 10M. Monthly Meta budget: PKR 1M. Required ROAS to hit target: 7–10x. Be direct, specific, ruthless. PKR numbers only. No filler text.`,
+          system: `You are the performance marketing brain for ${activeBrand?.name || "this brand"}${activeBrand?.industry ? ` — ${activeBrand.industry}` : ""}. You think like an elite Meta Ads expert. Monthly revenue target: ${CUR}${TARGET.toLocaleString()}. Monthly Meta budget: ${CUR}${BUDGET.toLocaleString()}. Required ROAS to hit target: ${(TARGET/BUDGET).toFixed(1)}x+. Be direct, specific, ruthless. ${activeBrand?.currency || "PKR"} numbers only. No filler text.`,
           messages: [{
             role: "user",
-            content: `Today's live data:\n\nShopify this month: ${PKR(shopSummary?.month?.paidRevenue)} revenue from ${shopSummary?.month?.paidOrders} paid orders. Target: ₨10M. Gap: ${PKR(TARGET - (shopSummary?.month?.paidRevenue || 0))}.\n\nTop selling products (no campaign data attached): ${shopProducts.slice(0, 5).map(p => `${p.title} (${p.quantity} units, ${PKR(p.revenue)})`).join(", ")}.\n\nMeta spend this month: ${PKR(meta?.insights?.spend)}. Blended ROAS: ${parseFloat(meta?.insights?.purchase_roas?.[0]?.value || 0).toFixed(1)}x.\n\nActive campaigns:\n${activeCamps.map(c => `- ${c.name}: spend ${PKR(c.spend)}, ROAS ${parseFloat(c.roas || 0).toFixed(1)}x, CTR ${parseFloat(c.ctr || 0).toFixed(2)}%, CPM ${PKR(c.cpm)}`).join("\n") || "None active."}\n\nCustomer segments: ${shopCustomers?.counts?.lapsed} lapsed customers (90d+), ${shopCustomers?.counts?.oneTime} one-time buyers, ${shopCustomers?.counts?.highValue} high value customers.\n\nGive me exactly 5 bullet points: what to kill, what to scale, what audience to create, what product to run next, and one structural fix. Each bullet starts with a bold action word.`
+            content: `Today's live data:\n\nShopify this month: ${PKR(shopSummary?.month?.paidRevenue, CUR)} revenue from ${shopSummary?.month?.paidOrders} paid orders. Target: ${CUR}${(TARGET/1000000).toFixed(1)}M. Gap: ${PKR(TARGET - (shopSummary?.month?.paidRevenue || 0), CUR)}.\n\nTop selling products (no campaign data attached): ${shopProducts.slice(0, 5).map(p => `${p.title} (${p.quantity} units, ${PKR(p.revenue, CUR)})`).join(", ")}.\n\nMeta spend this month: ${PKR(meta?.insights?.spend, CUR)}. Blended ROAS: ${parseFloat(meta?.insights?.purchase_roas?.[0]?.value || 0).toFixed(1)}x.\n\nActive campaigns:\n${activeCamps.map(c => `- ${c.name}: spend ${PKR(c.spend, CUR)}, ROAS ${parseFloat(c.roas || 0).toFixed(1)}x, CTR ${parseFloat(c.ctr || 0).toFixed(2)}%, CPM ${PKR(c.cpm, CUR)}`).join("\n") || "None active."}\n\nGoogle Ads this month (live campaigns only): ${google && !google.notConnected ? `spend ${PKR(googleSpend, CUR)}, ROAS ${googleRoas.toFixed(1)}x across ${googleLive.length} live campaign(s)` : "not connected"}.\n\nCustomer segments: ${shopCustomers?.counts?.lapsed} lapsed customers (90d+), ${shopCustomers?.counts?.oneTime} one-time buyers, ${shopCustomers?.counts?.highValue} high value customers.\n\nGive me exactly 5 bullet points: what to kill, what to scale, what audience to create, what product to run next, and one structural fix. Each bullet starts with a bold action word.`
           }]
         }),
       });
@@ -166,13 +171,13 @@ export default function Dashboard({ bc }) {
     if (!count) return;
     setAudienceLoading(prev => ({ ...prev, [segment]: true }));
     try {
-      const shopRes = await fetch(`/api/shopify?action=customers&segment=${segment}`);
+      const shopRes = await fetch(`/api/shopify?action=customers&segment=${segment}&brand=${activeBrand?.id}`);
       const shopData = await shopRes.json();
       const emails = (shopData.customers || []).map(c => c.email).filter(Boolean);
       const metaRes = await fetch("/api/meta?action=create_audience", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: `JULKÉ — ${label}`, description: `${label} — ${count} customers`, emails }),
+        body: JSON.stringify({ name: `${activeBrand?.name || "Brand"} — ${label}`, description: `${label} — ${count} customers`, emails, brand: activeBrand?.id }),
       });
       const result = await metaRes.json();
       if (result.id) {
@@ -200,10 +205,16 @@ export default function Dashboard({ bc }) {
     </div>
   );
 
+  const TARGET = Number(activeBrand?.monthlyTarget) || DEFAULT_TARGET;
+  const BUDGET = Number(activeBrand?.monthlyBudget) || DEFAULT_BUDGET;
+  const CUR = getCurrencySymbol(activeBrand?.currency || "PKR");
   const monthRev = shopSummary?.period?.paidRevenue || 0;
   const monthOrders = shopSummary?.period?.paidOrders || 0;
   const metaSpend = parseFloat(meta?.insights?.spend || 0);
   const metaRoas = parseFloat(meta?.insights?.purchase_roas?.[0]?.value || 0);
+  const googleLive = google?.campaigns || [];
+  const googleSpend = googleLive.reduce((s, c) => s + (c.cost || 0), 0);
+  const googleRoas = googleSpend > 0 ? googleLive.reduce((s, c) => s + (c.conversionsValue || 0), 0) / googleSpend : 0;
   const progress = Math.min((monthRev / TARGET) * 100, 100);
   const today = new Date();
   const daysLeft = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - today.getDate();
@@ -231,8 +242,8 @@ export default function Dashboard({ bc }) {
         {/* ── HEADER ─────────────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontWeight: 900, fontSize: 20, color: "#D8E0F0", letterSpacing: "-0.02em" }}>JULKÉ Performance</div>
-            <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>Live · Meta + Shopify</div>
+            <div style={{ fontWeight: 900, fontSize: 20, color: "#D8E0F0", letterSpacing: "-0.02em" }}>{activeBrand?.name || "Brand"} Performance</div>
+            <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>Live · Meta + Shopify{google && !google.notConnected ? " + Google" : ""}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             {/* Preset pills */}
@@ -280,10 +291,10 @@ export default function Dashboard({ bc }) {
         <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Monthly Revenue vs ₨10M Target</div>
+              <div style={{ fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Monthly Revenue vs {CUR}{(TARGET / 1000000).toFixed(1)}M Target</div>
               <div style={{ fontSize: 30, fontWeight: 900, color: "#D8E0F0", letterSpacing: "-0.02em" }}>
-                {PKR(monthRev)}
-                <span style={{ fontSize: 15, color: "#4A5568", fontWeight: 400, marginLeft: 8 }}>/ ₨10M</span>
+                {PKR(monthRev, CUR)}
+                <span style={{ fontSize: 15, color: "#4A5568", fontWeight: 400, marginLeft: 8 }}>/ {CUR}{(TARGET / 1000000).toFixed(1)}M</span>
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -296,7 +307,7 @@ export default function Dashboard({ bc }) {
           </div>
           {daysLeft > 0 && (
             <div style={{ fontSize: 11, color: "#4A5568" }}>
-              Need <span style={{ color: "#D8E0F0", fontWeight: 700 }}>{PKR(dailyNeeded)}/day</span> for {daysLeft} remaining days · Gap: <span style={{ color: progressColor, fontWeight: 700 }}>{PKR(TARGET - monthRev)}</span>
+              Need <span style={{ color: "#D8E0F0", fontWeight: 700 }}>{PKR(dailyNeeded, CUR)}/day</span> for {daysLeft} remaining days · Gap: <span style={{ color: progressColor, fontWeight: 700 }}>{PKR(TARGET - monthRev, CUR)}</span>
             </div>
           )}
         </div>
@@ -304,8 +315,8 @@ export default function Dashboard({ bc }) {
         {/* ── KEY METRICS ────────────────────────────────────────── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
           {[
-            { label: "Meta Spend (30d)", value: PKR(metaSpend), sub: metaSpend > BUDGET ? "⚠️ Over budget" : `${PKR(BUDGET - metaSpend)} remaining`, color: metaSpend > BUDGET ? "#EF4444" : bc },
-            { label: "Blended ROAS",     value: metaRoas > 0 ? `${metaRoas.toFixed(1)}x` : "—", sub: "Target: 7–10x", color: roasColor(metaRoas) },
+            { label: "Meta Spend (30d)", value: PKR(metaSpend, CUR), sub: metaSpend > BUDGET ? "⚠️ Over budget" : `${PKR(BUDGET - metaSpend, CUR)} remaining`, color: metaSpend > BUDGET ? "#EF4444" : bc },
+            { label: "Blended ROAS",     value: metaRoas > 0 ? `${metaRoas.toFixed(1)}x` : "—", sub: `Target: ${(TARGET/BUDGET).toFixed(1)}x+`, color: roasColor(metaRoas) },
             { label: "Paid Orders",      value: NUM(monthOrders), sub: `${shopSummary?.period?.orders || 0} total orders`, color: bc },
             { label: "Active Campaigns", value: activeCamps.length, sub: `${allCamps.length} total campaigns`, color: bc },
           ].map(({ label, value, sub, color }, i) => (
@@ -317,10 +328,54 @@ export default function Dashboard({ bc }) {
           ))}
         </div>
 
+        {/* ── GOOGLE ADS — LIVE CAMPAIGNS ONLY ─────────────────────
+            Same "live campaigns only" rule proven out in the Cowork
+            dashboard: this account has 30+ paused/legacy campaigns that
+            would otherwise bury the one or two that are actually
+            spending, so /api/google already filters to cost > 0 and we
+            just render what it returns. ───────────────────────────── */}
+        <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "16px 18px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#D8E0F0" }}>Google Ads — Live Campaigns Only</div>
+            {google && !google.notConnected && (
+              <div style={{ fontSize: 11, color: "#4A5568" }}>{google.liveCampaigns} live of {google.totalCampaigns} total</div>
+            )}
+          </div>
+          {!google || google.notConnected ? (
+            <div style={{ fontSize: 12, color: "#4A5568" }}>
+              Not connected for {activeBrand?.name || "this brand"}.
+              {activeBrand?.googleAccountId ? (
+                <> <a href={`/api/oauth?platform=google&brand=${activeBrand.id}&customerId=${activeBrand.googleAccountId}`} target="_blank" rel="noreferrer" style={{ color: "#34A853" }}>Connect Google Ads →</a></>
+              ) : (
+                <> Add a Google Account ID in Edit Brand first.</>
+              )}
+            </div>
+          ) : googleLive.length === 0 ? (
+            <div style={{ fontSize: 12, color: "#4A5568" }}>No campaigns are currently spending.</div>
+          ) : (
+            <div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 8, padding: "0 4px 8px", fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                <div>Campaign</div><div>Spend</div><div>Clicks</div><div>CTR</div><div>CPC</div><div>ROAS</div>
+              </div>
+              {googleLive.map(c => (
+                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 8, padding: "8px 4px", borderTop: "1px solid #0F1520", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: "#D8E0F0", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{PKR(c.cost, CUR)}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{Math.round(c.clicks)}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{c.ctr.toFixed(2)}%</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{PKR(c.cpc, CUR)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: roasColor(c.roas) }}>{c.roas > 0 ? `${c.roas.toFixed(1)}x` : "—"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* ── AI ACTION CENTER ───────────────────────────────────── */}
         {meta && (
           <AIActions
             bc={bc}
+            activeBrand={activeBrand}
             liveData={{
               campaigns: meta?.campaigns,
               insights: meta?.insights,
@@ -387,10 +442,10 @@ export default function Dashboard({ bc }) {
                     </div>
                   </div>
                   <span style={{ background: isActive ? "#00C85318" : "#1E2535", color: isActive ? "#00C853" : "#4A5568", border: `1px solid ${isActive ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{c.status}</span>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "#D8E0F0" }}>{ci.spend ? PKR(ci.spend) : "—"}</div>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#D8E0F0" }}>{ci.spend ? PKR(ci.spend, CUR) : "—"}</div>
                   <div style={{ fontWeight: 800, fontSize: 13, color: roas > 0 ? roasColor(roas) : "#4A5568" }}>{roas > 0 ? `${roas.toFixed(1)}x` : "—"}</div>
                   <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.ctr ? `${parseFloat(ci.ctr).toFixed(2)}%` : "—"}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.cpm ? PKR(ci.cpm) : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.cpm ? PKR(ci.cpm, CUR) : "—"}</div>
                   <div style={{ fontSize: 12, color: "#8892A4" }}>{purchases || "—"}</div>
                   <div style={{ fontSize: 12, color: freq >= 3 ? "#EF4444" : "#8892A4", fontWeight: freq >= 3 ? 700 : 400 }}>
                     {freq > 0 ? freq.toFixed(1) : "—"}{freq >= 3 && <span style={{ fontSize: 9, marginLeft: 3 }}>⚠️</span>}
@@ -417,10 +472,10 @@ export default function Dashboard({ bc }) {
                               </div>
                             </div>
                             <span style={{ background: as.status === "ACTIVE" ? "#00C85318" : "#1E2535", color: as.status === "ACTIVE" ? "#00C853" : "#4A5568", border: `1px solid ${as.status === "ACTIVE" ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{as.status}</span>
-                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.spend ? PKR(ai.spend) : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.spend ? PKR(ai.spend, CUR) : "—"}</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: asRoas > 0 ? roasColor(asRoas) : "#4A5568" }}>{asRoas > 0 ? `${asRoas.toFixed(1)}x` : "—"}</div>
                             <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.ctr ? `${parseFloat(ai.ctr).toFixed(2)}%` : "—"}</div>
-                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.cpm ? PKR(ai.cpm) : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.cpm ? PKR(ai.cpm, CUR) : "—"}</div>
                             <div style={{ fontSize: 11, color: "#8892A4" }}>{asPurchases || "—"}</div>
                             <div />
                           </div>
@@ -443,10 +498,10 @@ export default function Dashboard({ bc }) {
                                       </div>
                                     </div>
                                     <span style={{ background: ad.status === "ACTIVE" ? "#00C85318" : "#1E2535", color: ad.status === "ACTIVE" ? "#00C853" : "#4A5568", border: `1px solid ${ad.status === "ACTIVE" ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{ad.status}</span>
-                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.spend ? PKR(adi.spend) : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.spend ? PKR(adi.spend, CUR) : "—"}</div>
                                     <div style={{ fontSize: 12, fontWeight: 700, color: adRoas > 0 ? roasColor(adRoas) : "#4A5568" }}>{adRoas > 0 ? `${adRoas.toFixed(1)}x` : "—"}</div>
                                     <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.ctr ? `${parseFloat(adi.ctr).toFixed(2)}%` : "—"}</div>
-                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.cpm ? PKR(adi.cpm) : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.cpm ? PKR(adi.cpm, CUR) : "—"}</div>
                                     <div style={{ fontSize: 11, color: "#8892A4" }}>{adPurchases || "—"}</div>
                                     <div />
                                   </div>
@@ -483,7 +538,7 @@ export default function Dashboard({ bc }) {
                       {i < 3 && <span style={{ color: bc, marginRight: 5, fontSize: 10 }}>#{i + 1}</span>}
                       {p.title}
                     </div>
-                    <div style={{ fontSize: 11, color: "#4A5568" }}>{p.quantity} · {PKR(p.revenue)}</div>
+                    <div style={{ fontSize: 11, color: "#4A5568" }}>{p.quantity} · {PKR(p.revenue, CUR)}</div>
                   </div>
                   <div style={{ background: "#1E2535", borderRadius: 99, height: 4, overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 99, background: i < 3 ? bc : "#2A3550", width: `${w}%` }} />

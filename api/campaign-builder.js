@@ -5,9 +5,14 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { theme, type, topProducts, customerCounts, monthlyBudget = 1000000 } = req.body;
+  const { theme, type, topProducts, customerCounts, monthlyBudget = 1000000, brandName, industry, website, currency } = req.body;
 
-  const systemPrompt = `You are building a complete Meta Ads campaign for JULKÉ — a premium Pakistani women's footwear brand. Products: heels, flats, mules, bags. Store: julke.pk. Currency: PKR. Target audience: women 20-45, Pakistan, fashion-conscious.
+  const brandLabel = brandName || "the brand";
+  const industryLabel = industry || "ecommerce";
+  const siteLabel = website ? ` Store: ${website}.` : "";
+  const curLabel = currency || "PKR";
+
+  const systemPrompt = `You are building a complete Meta Ads campaign for ${brandLabel} — a ${industryLabel} brand.${siteLabel} Currency: ${curLabel}. Use the top-selling products and customer segment data provided below to infer target audience and creative direction — do not assume a specific product category unless the data shows it.
 
 Return ONLY valid JSON, no other text:
 {

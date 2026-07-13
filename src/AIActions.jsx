@@ -15,7 +15,7 @@ const PRIORITY_STYLE = {
   OPPORTUNITY: { bg: "#0082FB12", border: "#0082FB30", dot: "#0082FB", label: "Opportunity" },
 };
 
-export default function AIActions({ bc, liveData, onCampaignCreated }) {
+export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -41,6 +41,12 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
         body: JSON.stringify({
           ...liveData,
           theme: theme || undefined,
+          brandName: activeBrand?.name,
+          industry: activeBrand?.industry,
+          website: activeBrand?.website,
+          currency: activeBrand?.currency,
+          monthlyBudget: activeBrand?.monthlyBudget,
+          monthlyTarget: activeBrand?.monthlyTarget,
           pendingSetup: Object.values(
             JSON.parse(localStorage.getItem("julke_campaigns") || "{}")
           ).filter(c => !c.checklist.approved).map(c => c.name),
@@ -68,7 +74,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
         await fetch("/api/meta?action=update_campaign_status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ campaignId: s.data?.campaignId, status: newStatus }),
+          body: JSON.stringify({ campaignId: s.data?.campaignId, status: newStatus, brand: activeBrand?.id }),
         });
         setDone(p => ({ ...p, [s.id]: `Campaign ${newStatus.toLowerCase()}.` }));
         onCampaignCreated?.();
@@ -78,16 +84,17 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
     } else if (s.type === "create_audience") {
       setExecuting(p => ({ ...p, [s.id]: true }));
       try {
-        const shopRes = await fetch(`/api/shopify?action=customers&segment=${s.data?.audienceType}`);
+        const shopRes = await fetch(`/api/shopify?action=customers&segment=${s.data?.audienceType}&brand=${activeBrand?.id}`);
         const shopData = await shopRes.json();
         const emails = (shopData.customers || []).map(c => c.email).filter(Boolean);
         const r = await fetch("/api/meta?action=create_audience", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: `JULKÉ — ${s.title}`,
+            name: `${activeBrand?.name || "Brand"} — ${s.title}`,
             description: s.reason,
             emails,
+            brand: activeBrand?.id,
           }),
         });
         const res = await r.json();
@@ -113,6 +120,11 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
           type,
           topProducts: liveData?.shopifyProducts,
           customerCounts: liveData?.customerCounts,
+          monthlyBudget: activeBrand?.monthlyBudget,
+          brandName: activeBrand?.name,
+          industry: activeBrand?.industry,
+          website: activeBrand?.website,
+          currency: activeBrand?.currency,
         }),
       });
       const data = await r.json();
@@ -135,7 +147,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
       // 0. Fetch existing image hashes to use as placeholders for ads
       let imageHashes = [];
       try {
-        const hashRes = await fetch("/api/meta?action=image_hashes");
+        const hashRes = await fetch(`/api/meta?action=image_hashes&brand=${activeBrand?.id}`);
         const hashData = await hashRes.json();
         imageHashes = hashData.hashes || [];
       } catch { /* continue without images */ }
@@ -150,6 +162,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
           status: "PAUSED",
           special_ad_categories: [],
           is_adset_budget_sharing_enabled: false,
+          brand: activeBrand?.id,
         }),
       });
       const campData = await campRes.json();
@@ -165,7 +178,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
 
           if (adSet.funnel === "BOF") {
             try {
-              const shopRes = await fetch("/api/shopify?action=customers&segment=lapsed");
+              const shopRes = await fetch(`/api/shopify?action=customers&segment=lapsed&brand=${activeBrand?.id}`);
               const shopData = await shopRes.json();
               const emails = (shopData.customers || []).map(c => c.email).filter(Boolean);
               if (emails.length > 0) {
@@ -173,9 +186,10 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    name: `JULKÉ — Lapsed Customers`,
+                    name: `${activeBrand?.name || "Brand"} — Lapsed Customers`,
                     description: "90d+ no purchase — auto-created from Shopify",
                     emails,
+                    brand: activeBrand?.id,
                   }),
                 });
                 const audData = await audRes.json();
@@ -219,7 +233,7 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
             const asRes = await fetch("/api/meta?action=create_adset", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(adSetBody),
+              body: JSON.stringify({ ...adSetBody, brand: activeBrand?.id }),
             });
             asData = await asRes.json();
           } catch (fetchErr) {
@@ -252,9 +266,10 @@ export default function AIActions({ bc, liveData, onCampaignCreated }) {
                     primary_text: ad.primary_text,
                     headline: ad.headline,
                     description: ad.description,
-                    link: ad.link || "https://julke.pk",
+                    link: ad.link || activeBrand?.website || "https://example.com",
                     call_to_action: ad.call_to_action || "SHOP_NOW",
                     image_hash: imageHash,
+                    brand: activeBrand?.id,
                   }),
                 });
                 const adData = await adRes.json();

@@ -1,3 +1,5 @@
+import { getCredential } from './_lib/db.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -5,8 +7,18 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const token = process.env.META_ACCESS_TOKEN;
-  const adAccountId = process.env.META_AD_ACCOUNT_ID;
+  const isPost = req.method === 'POST';
+  const brand = req.query.brand || (isPost && req.body && req.body.brand);
+  if (!brand) return res.status(400).json({ error: 'Missing brand (query ?brand= for GET, body.brand for POST)' });
+
+  const cred = await getCredential(brand, 'meta');
+  if (!cred || !cred.access_token) {
+    return res.status(409).json({ error: 'not_connected', message: `No Meta connection for brand "${brand}". Visit /api/oauth?platform=meta&brand=${brand}&accountId=act_XXXXXXXXXX` });
+  }
+
+  const token = cred.access_token;
+  const adAccountId = cred.account_id;
+  const pageId = (cred.extra && cred.extra.pageId) || process.env.META_PAGE_ID;
   const baseUrl = 'https://graph.facebook.com/v19.0';
 
   const { action, preset = 'last_30d', since, until } = req.query;
@@ -128,8 +140,7 @@ export default async function handler(req, res) {
       const { adset_id, name, primary_text, headline, description, link, call_to_action, image_hash } = req.body;
       const adLink = link || 'https://julke.pk';
       const ctaType = (call_to_action || 'SHOP_NOW').replace(/ /g, '_').toUpperCase();
-      const pageId = process.env.META_PAGE_ID;
-      if (!pageId) return res.status(200).json({ error: 'META_PAGE_ID env var not set' });
+      if (!pageId) return res.status(200).json({ error: 'No Meta page id on file for this brand (set via extra.pageId when connecting, or META_PAGE_ID env var as a fallback)' });
       if (!image_hash) return res.status(200).json({ error: 'No image_hash provided' });
       // 1. Create the ad creative
       const creativeRes = await fetch(`${baseUrl}/${adAccountId}/adcreatives`, {

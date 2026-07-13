@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { campaigns, insights, shopifySummary, shopifyProducts, customerCounts, theme, pendingSetup } = req.body;
+  const { campaigns, insights, shopifySummary, shopifyProducts, customerCounts, theme, pendingSetup, brandName, industry, website, currency, monthlyBudget, monthlyTarget } = req.body;
 
   const activeCamps = (campaigns || []).filter(c => c.status === 'ACTIVE').map(c => {
     const ci = c.insights?.data?.[0] || {};
@@ -31,12 +31,14 @@ export default async function handler(req, res) {
     c.name.toLowerCase().includes('win-back')
   );
 
+  const TARGET = Number(monthlyTarget) || 10000000;
+  const BUDGET = Number(monthlyBudget) || 1000000;
   const context = {
     shopify: {
       monthRevenue: shopifySummary?.period?.paidRevenue,
       monthOrders: shopifySummary?.period?.paidOrders,
-      target: 10000000,
-      gap: 10000000 - (shopifySummary?.period?.paidRevenue || 0),
+      target: TARGET,
+      gap: TARGET - (shopifySummary?.period?.paidRevenue || 0),
       topProducts: (shopifyProducts || []).slice(0, 5).map(p => ({ name: p.title, units: p.quantity, revenue: p.revenue })),
     },
     meta: {
@@ -51,7 +53,11 @@ export default async function handler(req, res) {
     pendingSetup: pendingSetup || [],
   };
 
-  const systemPrompt = `You are an elite Meta Ads strategist for JULKÉ — a premium Pakistani footwear brand (heels, flats, bags, mules). Store: julke.pk. Monthly target: PKR 10M. Meta budget: PKR 1M/month. Required ROAS: 7-10x.
+  const brandLabel = brandName || "the brand";
+  const industryLabel = industry || "ecommerce";
+  const siteLabel = website ? ` Store: ${website}.` : "";
+  const curLabel = currency || "PKR";
+  const systemPrompt = `You are an elite Meta Ads strategist for ${brandLabel} — a ${industryLabel} brand.${siteLabel} Monthly target: ${curLabel} ${TARGET.toLocaleString()}. Meta budget: ${curLabel} ${BUDGET.toLocaleString()}/month. Required ROAS: ${(TARGET/BUDGET).toFixed(1)}x+.
 
 Your job: analyze performance data and return SPECIFIC, ACTIONABLE suggestions as JSON. Maximum 6 suggestions. Prioritize by revenue impact.
 

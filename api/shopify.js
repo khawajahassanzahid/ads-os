@@ -1,3 +1,12 @@
+// Brand-aware Shopify data endpoint.
+// Every call now takes ?brand=<id> and looks up that brand's store/token
+// from the credentials table (api/_lib/db.js) instead of a single global
+// SHOPIFY_STORE / SHOPIFY_ACCESS_TOKEN env var. This is what lets julke and
+// qalb (and anything else) have their own connected Shopify store at the
+// same time — nothing gets revoked when you look at a different brand.
+
+import { getCredential } from './_lib/db.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -5,15 +14,21 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const token = process.env.SHOPIFY_ACCESS_TOKEN;
-  const store = process.env.SHOPIFY_STORE;
+  const { action, preset = 'last_30d', since, until, brand } = req.query;
+  if (!brand) return res.status(400).json({ error: 'Missing ?brand=<id>' });
+
+  const cred = await getCredential(brand, 'shopify');
+  if (!cred || !cred.access_token) {
+    return res.status(409).json({ error: 'not_connected', message: `No Shopify connection for brand "${brand}". Visit /api/oauth?platform=shopify&brand=${brand}&shop=yourstore.myshopify.com` });
+  }
+
+  const token = cred.access_token;
+  const store = cred.account_id;
   const baseUrl = `https://${store}/admin/api/2025-01`;
   const headers = {
     'X-Shopify-Access-Token': token,
     'Content-Type': 'application/json',
   };
-
-  const { action, preset = 'last_30d', since, until } = req.query;
 
   // Convert preset or custom range to Shopify date params
   const getDateRange = () => {
@@ -72,7 +87,6 @@ export default async function handler(req, res) {
       return res.status(200).json({
         period: summarize(data.orders),
         dateRange: { min, max },
-        target: 10000000,
       });
     }
 

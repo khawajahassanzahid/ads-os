@@ -3,7 +3,10 @@
     "api/suggestions.js":      { "maxDuration": 60 },
     "api/campaign-builder.js": { "maxDuration": 60 },
     "api/claude.js":           { "maxDuration": 60 },
-    "api/meta.js":             { "maxDuration": 30 },
-    "api/shopify.js":          { "maxDuration": 30 }
+    "api/meta.js":              { "maxDuration": 30 },
+    "api/shopify.js":           { "maxDuration": 30 },
+    "api/google.js":            { "maxDuration": 30 },
+    "api/oauth.js":              { "maxDuration": 30 },
+    "api/brands.js":             { "maxDuration": 15 }
   }
 }

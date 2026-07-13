@@ -30,11 +30,11 @@ function uid() { return Date.now().toString(36) + Math.random().toString(36).sli
 
 // ─── AI HELPERS ───────────────────────────────────────────────────────────────
 const CLAUDE = "claude-sonnet-4-6";
-async function askClaude(system, messages) {
+async function askClaude(system, messages, maxTokens = 1000) {
   const res = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: CLAUDE, max_tokens: 1000, system, messages })
+    body: JSON.stringify({ model: CLAUDE, max_tokens: maxTokens, system, messages })
   });
   const data = await res.json();
   return data.content?.map(b => b.text || "").join("") || "Error — please try again.";
@@ -160,7 +160,7 @@ const QUICK = [
 ];
 
 const BRAND_COLORS = ["#0082FB","#00C853","#FF6B35","#F59E0B","#EC4899","#8B5CF6","#06B6D4","#EF4444"];
-const CURRENCIES = [
+export const CURRENCIES = [
   { code: "USD", symbol: "$", label: "USD — US Dollar" },
   { code: "EUR", symbol: "€", label: "EUR — Euro" },
   { code: "PKR", symbol: "₨", label: "PKR — Pakistani Rupee" },
@@ -168,7 +168,7 @@ const CURRENCIES = [
   { code: "AED", symbol: "د.إ", label: "AED — UAE Dirham" },
   { code: "SAR", symbol: "﷼", label: "SAR — Saudi Riyal" },
 ];
-const getCurrencySymbol = (code) => CURRENCIES.find(c => c.code === code)?.symbol || "$";
+export const getCurrencySymbol = (code) => CURRENCIES.find(c => c.code === code)?.symbol || "$";
 
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -185,6 +185,7 @@ export default function AdsOS() {
   const [appView, setAppView] = useState("loading");
   const [brands, setBrands] = useState([]);
   const [activeBrand, setActiveBrand] = useState(null);
+  const [channelStatus, setChannelStatus] = useState({}); // brandId -> { shopify:{connected}, meta:{connected}, google:{connected} }
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -201,7 +202,7 @@ export default function AdsOS() {
   const [showBrandModal, setShowBrandModal] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [brandForm, setBrandForm] = useState({ name:"",industry:"",website:"",monthlyBudget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",notes:"",color:"#0082FB" });
+  const [brandForm, setBrandForm] = useState({ name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB" });
   const [bpGoal, setBpGoal] = useState("");
   const [notification, setNotification] = useState(null);
   const messagesEnd = useRef(null);
@@ -222,13 +223,34 @@ export default function AdsOS() {
     setMetaLoading(true);
     try {
       const [acct, campaigns, insights] = await Promise.all([
-        fetch('/api/meta?action=account').then(r => r.json()),
-        fetch('/api/meta?action=campaigns').then(r => r.json()),
-        fetch('/api/meta?action=insights&preset=last_30d').then(r => r.json()),
+        fetch(`/api/meta?action=account&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/meta?action=campaigns&brand=${activeBrand?.id}`).then(r => r.json()),
+        fetch(`/api/meta?action=insights&preset=last_30d&brand=${activeBrand?.id}`).then(r => r.json()),
       ]);
       setMetaData({ account: acct, campaigns: campaigns.data || [], insights: insights.data?.[0] || {} });
     } catch (e) { notify('Could not load Meta data', 'error'); }
     finally { setMetaLoading(false); }
+  };
+
+
+  const syncBrandToServer = async (brand) => {
+    try {
+      await fetch("/api/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: brand.id, name: brand.name, currency: brand.currency || "USD" }),
+      });
+    } catch {}
+  };
+
+  const refreshChannelStatus = async () => {
+    try {
+      const r = await fetch("/api/brands");
+      const d = await r.json();
+      const map = {};
+      (d.brands || []).forEach(b => { map[b.id] = b.channels; });
+      setChannelStatus(map);
+    } catch {}
   };
 
   const openBrand = async (brand) => {
@@ -240,17 +262,20 @@ export default function AdsOS() {
     setAuditResult(null);
     setBrandTab("dashboard");
     setAppView("brand");
+    refreshChannelStatus();
   };
 
   const saveBrandForm = async () => {
     if (!brandForm.name.trim()) return;
     const brand = editingBrand ? { ...editingBrand, ...brandForm } : { id: uid(), ...brandForm, createdAt: Date.now() };
     await saveBrand(brand);
+    await syncBrandToServer(brand);
     setBrands(prev => editingBrand ? prev.map(b => b.id === brand.id ? brand : b) : [...prev, brand]);
     if (activeBrand?.id === brand.id) setActiveBrand(brand);
     setShowBrandModal(false); setEditingBrand(null);
-    setBrandForm({ name:"",industry:"",website:"",monthlyBudget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",notes:"",color:"#0082FB" });
+    setBrandForm({ name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB" });
     notify(`${brand.name} saved`);
+    refreshChannelStatus();
   };
 
   const startChat = async (initialPrompt) => {
@@ -286,7 +311,7 @@ export default function AdsOS() {
     setBpLoading(true); setBrandTab("blueprint");
     try {
       const prompt = bpGoal ? `Generate a campaign blueprint focused on: ${bpGoal}` : "Generate a complete campaign blueprint based on this brand's goals and budget.";
-      const raw = await askClaude(BLUEPRINT_SYSTEM(activeBrand), [{ role: "user", content: prompt }]);
+      const raw = await askClaude(BLUEPRINT_SYSTEM(activeBrand), [{ role: "user", content: prompt }], 4096);
       const clean = raw.replace(/```json|```/g, "").trim();
       const bp = { id: uid(), brandId: activeBrand.id, data: JSON.parse(clean), goal: bpGoal || "Full campaign strategy", createdAt: Date.now() };
       await saveBlueprint(activeBrand.id, bp);
@@ -302,7 +327,7 @@ export default function AdsOS() {
     setAuditLoading(true); setBrandTab("audit"); setAuditResult(null);
     try {
       const context = activeBlueprint ? JSON.stringify(activeBlueprint.data).slice(0, 2000) : "No campaign structure provided — audit based on brand info only.";
-      const raw = await askClaude(AUDIT_SYSTEM(activeBrand), [{ role: "user", content: `Audit this campaign setup: ${context}` }]);
+      const raw = await askClaude(AUDIT_SYSTEM(activeBrand), [{ role: "user", content: `Audit this campaign setup: ${context}` }], 4096);
       const clean = raw.replace(/```json|```/g, "").trim();
       setAuditResult(JSON.parse(clean));
       notify("Audit complete!");
@@ -385,7 +410,7 @@ export default function AdsOS() {
             <button style={S.btn(bc)} className="hov" onClick={() => startChat()}>+ Chat</button>
           </div>
         )}
-        {!activeBrand && <button style={S.btn("#0082FB")} className="hov" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }}>+ Brand</button>}
+        {!activeBrand && <button style={S.btn("#0082FB")} className="hov" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }}>+ Brand</button>}
       </div>
 
       <div style={S.main}>
@@ -399,7 +424,7 @@ export default function AdsOS() {
                 <span style={{ fontSize:13, fontWeight: activeBrand?.id===b.id ? 700 : 500, color: activeBrand?.id===b.id ? "#D8E0F0" : "#4A5568", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</span>
               </div>
             ))}
-            <div className="hov-bg" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ display:"flex", alignItems:"center", gap:9, padding:"7px 9px", borderRadius:9, cursor:"pointer", marginTop:2 }}>
+            <div className="hov-bg" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ display:"flex", alignItems:"center", gap:9, padding:"7px 9px", borderRadius:9, cursor:"pointer", marginTop:2 }}>
               <div style={{ width:7, height:7, borderRadius:"50%", border:"1px dashed #2A3550", flexShrink:0 }} />
               <span style={{ fontSize:12, color:"#2A3550" }}>Add brand…</span>
             </div>
@@ -443,7 +468,7 @@ export default function AdsOS() {
                         {b.monthlyBudget && <div style={{ fontSize:11, color:b.color||"#0082FB", marginTop:5 }}>{getCurrencySymbol(b.currency)}{Number(b.monthlyBudget).toLocaleString()}/mo</div>}
                       </div>
                     ))}
-                    <div className="hov-card" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ ...S.card, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#2A3550", fontSize:13, transition:"all 0.2s", border:"1px dashed #1E2535", background:"transparent" }}>+ Add Brand</div>
+                    <div className="hov-card" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ ...S.card, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#2A3550", fontSize:13, transition:"all 0.2s", border:"1px dashed #1E2535", background:"transparent" }}>+ Add Brand</div>
                   </div>
                 )}
               </div>
@@ -475,20 +500,32 @@ export default function AdsOS() {
                           <div style={{ fontSize:12, color:"#2A3550", marginTop:2 }}>{activeBrand.industry||"Paid Media"}{activeBrand.website ? ` · ${activeBrand.website}` : ""}</div>
                         </div>
                       </div>
-                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit</button>
+                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit</button>
                     </div>
 
                     {/* Account status cards */}
-                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:24 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:24 }}>
                       {[
                         { label:"Budget / mo", value: activeBrand.monthlyBudget ? `${getCurrencySymbol(activeBrand.currency)}${Number(activeBrand.monthlyBudget).toLocaleString()}` : "Not set", color:bc },
-                        { label:"Meta Account", value: activeBrand.metaAccountId || "Not connected", color:"#0082FB", warn:!activeBrand.metaAccountId },
-                        { label:"Google Account", value: activeBrand.googleAccountId || "Not connected", color:"#34A853", warn:!activeBrand.googleAccountId },
+                        { label:"Shopify Store", value: activeBrand.shopifyDomain || "Not set", color:"#96BF48", warn:!activeBrand.shopifyDomain,
+                          connect: activeBrand.shopifyDomain && `/api/oauth?platform=shopify&brand=${activeBrand.id}&shop=${activeBrand.shopifyDomain}&brandName=${encodeURIComponent(activeBrand.name)}`,
+                          connected: channelStatus[activeBrand.id]?.shopify?.connected },
+                        { label:"Meta Account", value: activeBrand.metaAccountId || "Not connected", color:"#0082FB", warn:!activeBrand.metaAccountId,
+                          connect: activeBrand.metaAccountId && `/api/oauth?platform=meta&brand=${activeBrand.id}&accountId=${activeBrand.metaAccountId}&brandName=${encodeURIComponent(activeBrand.name)}`,
+                          connected: channelStatus[activeBrand.id]?.meta?.connected },
+                        { label:"Google Account", value: activeBrand.googleAccountId || "Not connected", color:"#34A853", warn:!activeBrand.googleAccountId,
+                          connect: activeBrand.googleAccountId && `/api/oauth?platform=google&brand=${activeBrand.id}&customerId=${activeBrand.googleAccountId}&brandName=${encodeURIComponent(activeBrand.name)}`,
+                          connected: channelStatus[activeBrand.id]?.google?.connected },
                       ].map((s,i) => (
                         <div key={i} style={S.card}>
                           <div style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:6 }}>{s.label}</div>
                           <div style={{ fontSize:14, fontWeight:700, color: s.warn ? "#2A3550" : s.color }}>{s.value}</div>
                           {s.warn && <div style={{ fontSize:10, color:"#F59E0B", marginTop:4 }}>⚠️ Add in Edit</div>}
+                          {s.connect && (
+                            s.connected
+                              ? <div style={{ fontSize:10, color:"#00C853", marginTop:6 }}>✓ Connected</div>
+                              : <a href={s.connect} target="_blank" rel="noreferrer" style={{ display:"inline-block", marginTop:6, fontSize:10, fontWeight:700, color: s.color, textDecoration:"none", border:`1px solid ${s.color}40`, borderRadius:6, padding:"3px 8px" }}>Connect →</a>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -569,7 +606,7 @@ export default function AdsOS() {
                     {metaData && !metaLoading && (() => {
                       const { account, campaigns, insights } = metaData;
                       const fmt = (n) => n ? Number(n).toLocaleString() : "0";
-                      const pct = (n) => n ? (Number(n)*100).toFixed(2)+"%" : "0%";
+                      const pct = (n) => n ? Number(n).toFixed(2)+"%" : "0%"; // Meta Graph API already returns ctr as a percent (e.g. "5.48"), not a fraction — do not multiply by 100
                       const purchases = insights?.actions?.find(a => a.action_type==="purchase")?.value || 0;
                       const revenue = insights?.action_values?.find(a => a.action_type==="purchase")?.value || 0;
                       const roas = insights?.purchase_roas?.[0]?.value || 0;
@@ -979,13 +1016,17 @@ export default function AdsOS() {
                   </div>
                 </div>
               </div>
-              <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Primary Goals</label><input style={S.input} value={brandForm.goals} onChange={e => setBrandForm(p=>({...p,goals:e.target.value}))} placeholder="Drive purchases, generate leads, grow awareness…" /></div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Primary Goals</label><input style={S.input} value={brandForm.goals} onChange={e => setBrandForm(p=>({...p,goals:e.target.value}))} placeholder="Drive purchases, generate leads, grow awareness…" /></div>
+                <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Monthly Revenue Target</label><input style={S.input} type="number" value={brandForm.monthlyTarget} onChange={e => setBrandForm(p=>({...p,monthlyTarget:e.target.value}))} placeholder="10000000" /></div>
+              </div>
               <div style={{ borderTop:"1px solid #0F1520", paddingTop:14 }}>
-                <div style={{ fontSize:10, color:"#0082FB", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:12, fontWeight:700 }}>Ad Account IDs (optional — for context)</div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                <div style={{ fontSize:10, color:"#0082FB", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:12, fontWeight:700 }}>Connected Accounts (fill in, then use Connect on the Overview tab)</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
                   <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Meta Account ID</label><input style={S.input} value={brandForm.metaAccountId} onChange={e => setBrandForm(p=>({...p,metaAccountId:e.target.value}))} placeholder="act_123456789" /></div>
-                  <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Google Account ID</label><input style={S.input} value={brandForm.googleAccountId} onChange={e => setBrandForm(p=>({...p,googleAccountId:e.target.value}))} placeholder="123-456-7890" /></div>
+                  <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Google Account ID</label><input style={S.input} value={brandForm.googleAccountId} onChange={e => setBrandForm(p=>({...p,googleAccountId:e.target.value}))} placeholder="123-456-7890 (no dashes)" /></div>
                 </div>
+                <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Shopify Store Domain</label><input style={S.input} value={brandForm.shopifyDomain} onChange={e => setBrandForm(p=>({...p,shopifyDomain:e.target.value}))} placeholder="yourstore.myshopify.com" /></div>
               </div>
               <div><label style={{ fontSize:10, color:"#2A3550", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Extra Context</label><textarea style={{ ...S.input, height:72 }} value={brandForm.notes} onChange={e => setBrandForm(p=>({...p,notes:e.target.value}))} placeholder="Target audience, key products, current challenges, competitors…" /></div>
               <div>
