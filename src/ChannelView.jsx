@@ -46,15 +46,25 @@ function BestPractices({ items }) {
   );
 }
 
-function ConnectBox({ label, connectUrl }) {
+// Two genuinely different states, shown differently on purpose:
+// - liveCapable channels with no OAuth flow started yet: a real Connect
+//   button (or a link to go fill in the missing account ID first).
+// - channels with no integration built at all: say so plainly. There is
+//   no field to fill in and no button that would do anything, so don't
+//   imply otherwise.
+function ConnectBox({ label, connectUrl, needsSetup, onEditBrand }) {
   return (
     <Panel>
       <Pill text="NOT CONNECTED" bg="#fbe4e2" color="#a5271e" />
       <div style={{ background: "#faf9f6", border: "1px dashed #ccc", borderRadius: 8, padding: 16, textAlign: "center", marginTop: 10 }}>
         <p style={{ fontSize: 12.5, color: "#333", margin: "0 0 10px" }}>{label} isn't linked for this brand yet, so this tab can't show live data — only what to check once it's connected.</p>
-        {connectUrl
-          ? <a href={connectUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", padding: "7px 14px", borderRadius: 6, background: "#1a1a1a", color: "#fff", fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>Connect {label} →</a>
-          : <div style={{ fontSize: 11.5, color: "#999" }}>Add the account ID for {label} in Edit Brand first, then connect from there.</div>}
+        {connectUrl ? (
+          <a href={connectUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", padding: "7px 14px", borderRadius: 6, background: "#1a1a1a", color: "#fff", fontSize: 12.5, fontWeight: 600, textDecoration: "none" }}>Connect {label} →</a>
+        ) : needsSetup ? (
+          <button onClick={onEditBrand} style={{ padding: "7px 14px", borderRadius: 6, background: "#1a1a1a", color: "#fff", fontSize: 12.5, fontWeight: 600, border: "none", cursor: "pointer" }}>Add {label} account details →</button>
+        ) : (
+          <div style={{ fontSize: 11.5, color: "#999" }}>No integration built for {label} yet — this page just tracks the best-practice framework for now.</div>
+        )}
       </div>
     </Panel>
   );
@@ -259,7 +269,7 @@ function Ga4Channel({ activeBrand }) {
   );
 }
 
-export default function ChannelView({ channelId, activeBrand, channelStatus }) {
+export default function ChannelView({ channelId, activeBrand, channelStatus, onEditBrand }) {
   const c = CHANNELS.find(x => x.id === channelId);
   if (!c) return null;
   const connected = isChannelConnected(channelId, channelStatus);
@@ -280,7 +290,7 @@ export default function ChannelView({ channelId, activeBrand, channelStatus }) {
 
         {!connected ? (
           <>
-            <ConnectBox label={c.label} connectUrl={connectUrls[channelId]} />
+            <ConnectBox label={c.label} connectUrl={connectUrls[channelId]} needsSetup={c.liveCapable} onEditBrand={onEditBrand} />
             <BestPractices items={c.bestPractices} />
           </>
         ) : !c.liveCapable ? (

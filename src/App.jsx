@@ -253,6 +253,12 @@ export default function AdsOS() {
     } catch {}
   };
 
+  const openEditBrand = (brand) => {
+    setEditingBrand(brand);
+    setBrandForm({name:brand.name, industry:brand.industry||"", website:brand.website||"", monthlyBudget:brand.monthlyBudget||"", monthlyTarget:brand.monthlyTarget||"", currency:brand.currency||"USD", goals:brand.goals||"", metaAccountId:brand.metaAccountId||"", googleAccountId:brand.googleAccountId||"", shopifyDomain:brand.shopifyDomain||"", searchConsoleSiteUrl:brand.searchConsoleSiteUrl||"", ga4PropertyId:brand.ga4PropertyId||"", notes:brand.notes||"", color:brand.color||"#0082FB"});
+    setShowBrandModal(true);
+  };
+
   const openBrand = async (brand) => {
     setActiveBrand(brand);
     const [c, b] = await Promise.all([loadChats(brand.id), loadBlueprints(brand.id)]);
@@ -534,7 +540,7 @@ export default function AdsOS() {
 
               {/* CHANNEL DRILL-DOWN — Meta Ads / Google Ads / Merchant Center / YouTube / Organic SEO /
                   AI SEO / Email & SMS / Shopify / Organic Social / Affiliate */}
-              {CHANNELS.some(c => c.id === brandTab) && <ChannelView channelId={brandTab} activeBrand={activeBrand} channelStatus={channelStatus[activeBrand.id]} />}
+              {CHANNELS.some(c => c.id === brandTab) && <ChannelView channelId={brandTab} activeBrand={activeBrand} channelStatus={channelStatus[activeBrand.id]} onEditBrand={() => openEditBrand(activeBrand)} />}
 
               {/* BRAND SETUP (was "Overview") — account status cards, quick actions, blueprint CTA, recent chats */}
               {brandTab === "setup" && (
@@ -542,7 +548,7 @@ export default function AdsOS() {
                   <div style={{ maxWidth:800, margin:"0 auto" }} className="fade-up">
 
                     <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
-                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", searchConsoleSiteUrl:activeBrand.searchConsoleSiteUrl||"", ga4PropertyId:activeBrand.ga4PropertyId||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit Brand</button>
+                      <button style={S.btn(bc, true)} className="hov" onClick={() => openEditBrand(activeBrand)}>Edit Brand</button>
                     </div>
 
                     {/* Account status cards */}
