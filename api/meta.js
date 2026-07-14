@@ -28,16 +28,35 @@ export default async function handler(req, res) {
     ? `time_range={"since":"${since}","until":"${until}"}`
     : `date_preset=${preset}`;
 
+  // Follow Meta's cursor pagination (paging.next) until exhausted, up to a
+  // safety cap. Accounts with hundreds of campaigns (this one has 537) were
+  // silently truncated to Meta's default page size (25) with no pagination,
+  // so "Active Campaigns" counts and lists were missing real, currently-
+  // spending campaigns that just happened to live past the first page.
+  async function fetchAllPages(url, maxPages = 12) {
+    let all = [];
+    let next = url;
+    let pages = 0;
+    while (next && pages < maxPages) {
+      const r = await fetch(next);
+      const json = await r.json();
+      if (json.error) return json; // surface Meta's error as-is
+      all = all.concat(json.data || []);
+      next = json.paging?.next || null;
+      pages++;
+    }
+    return { data: all };
+  }
+
   try {
     // GET CAMPAIGNS
     if (action === 'campaigns') {
       const insightsField = since && until
         ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`
         : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`;
-      const r = await fetch(
-        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&effective_status[]=ACTIVE&effective_status[]=PAUSED&access_token=${token}`
+      const data = await fetchAllPages(
+        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&effective_status[]=ACTIVE&effective_status[]=PAUSED&limit=250&access_token=${token}`
       );
-      const data = await r.json();
       return res.status(200).json(data);
     }
 
@@ -48,10 +67,9 @@ export default async function handler(req, res) {
         ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpc,actions}`
         : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,actions}`;
       const url = campaignId
-        ? `${baseUrl}/${campaignId}/adsets?fields=id,name,status,targeting,daily_budget,optimization_goal,bid_strategy,${insightsField}&access_token=${token}`
-        : `${baseUrl}/${adAccountId}/adsets?fields=id,name,status,campaign_id,targeting,daily_budget,optimization_goal,bid_strategy,${insightsField}&access_token=${token}`;
-      const r = await fetch(url);
-      const data = await r.json();
+        ? `${baseUrl}/${campaignId}/adsets?fields=id,name,status,targeting,daily_budget,optimization_goal,bid_strategy,${insightsField}&limit=250&access_token=${token}`
+        : `${baseUrl}/${adAccountId}/adsets?fields=id,name,status,campaign_id,targeting,daily_budget,optimization_goal,bid_strategy,${insightsField}&limit=250&access_token=${token}`;
+      const data = await fetchAllPages(url);
       return res.status(200).json(data);
     }
 
