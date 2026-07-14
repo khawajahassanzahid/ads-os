@@ -68,7 +68,13 @@ export default async function handler(req, res) {
       }
 
       if (platform === 'meta') {
-        const { accountId } = parsed;
+        // Meta's Graph API requires the "act_" prefix on ad account IDs
+        // (e.g. act_570299676675346), but people naturally copy just the
+        // numeric ID from Ads Manager / the brand form. Normalize here so
+        // every downstream call in api/meta.js works regardless of which
+        // format was typed in.
+        const rawAccountId = parsed.accountId;
+        const accountId = rawAccountId && !rawAccountId.startsWith('act_') ? `act_${rawAccountId}` : rawAccountId;
         // Exchange code -> short-lived user token
         const shortR = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?` + new URLSearchParams({
           client_id: process.env.META_APP_ID,
