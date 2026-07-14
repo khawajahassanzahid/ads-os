@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import AIActions from "./AIActions";
 import { needsSetup, getCampaign } from "./CampaignTracker";
-import { getCurrencySymbol } from "./App";
+import { getCurrencySymbol } from "./currency.js";
 
 const PKR = (n, sym = "₨") => {
   const v = parseFloat(n) || 0;
@@ -19,17 +19,17 @@ const NUM = (n) => {
 
 const roasColor = (r) => {
   const v = parseFloat(r) || 0;
-  if (v >= 7) return "#00C853";
-  if (v >= 3) return "#F59E0B";
-  if (v > 0) return "#EF4444";
-  return "#4A5568";
+  if (v >= 7) return "#256b2e";
+  if (v >= 3) return "#8a6300";
+  if (v > 0) return "#a5271e";
+  return "#6b6b6b";
 };
 
 const roasBg = (r) => {
   const v = parseFloat(r) || 0;
-  if (v >= 7) return "#00C85312";
-  if (v >= 3) return "#F59E0B12";
-  if (v > 0) return "#EF444412";
+  if (v >= 7) return "#256b2e12";
+  if (v >= 3) return "#8a630012";
+  if (v > 0) return "#a5271e12";
   return "transparent";
 };
 
@@ -194,13 +194,13 @@ export default function Dashboard({ bc, activeBrand }) {
   if (loading) return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
       <div style={{ width: 32, height: 32, border: `3px solid ${bc}30`, borderTopColor: bc, borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-      <div style={{ color: "#4A5568", fontSize: 13 }}>Loading live data…</div>
+      <div style={{ color: "#6b6b6b", fontSize: 13 }}>Loading live data…</div>
     </div>
   );
 
   if (error) return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-      <div style={{ color: "#EF4444", fontSize: 14 }}>{error}</div>
+      <div style={{ color: "#a5271e", fontSize: 14 }}>{error}</div>
       <button onClick={loadAll} style={{ background: bc, border: "none", borderRadius: 8, color: "#fff", padding: "8px 18px", fontSize: 13, cursor: "pointer" }}>Retry</button>
     </div>
   );
@@ -222,17 +222,17 @@ export default function Dashboard({ bc, activeBrand }) {
   const activeCamps = (meta?.campaigns || []).filter(c => c.status === "ACTIVE");
   const allCamps = meta?.campaigns || [];
 
-  const progressColor = progress >= 70 ? "#00C853" : progress >= 40 ? "#F59E0B" : "#EF4444";
+  const progressColor = progress >= 70 ? "#256b2e" : progress >= 40 ? "#8a6300" : "#a5271e";
   const isCustom = preset === "custom" && customFrom && customTo;
   const dateQ = isCustom ? `since=${customFrom}&until=${customTo}` : `preset=${preset}`;
 
   const SEGMENTS = [
-    { key: "recent",    label: "Recent Buyers (30d)",    icon: "🟢", desc: "Exclude from prospecting — already bought",  color: "#00C853" },
-    { key: "highValue", label: "High Value Customers",   icon: "⭐", desc: "Build Lookalike from these — your best ROAS", color: "#F59E0B" },
-    { key: "lapsed",    label: "Lapsed (90d+ no buy)",   icon: "🔴", desc: "Win-back campaign — lowest cost retargeting", color: "#EF4444" },
+    { key: "recent",    label: "Recent Buyers (30d)",    icon: "🟢", desc: "Exclude from prospecting — already bought",  color: "#256b2e" },
+    { key: "highValue", label: "High Value Customers",   icon: "⭐", desc: "Build Lookalike from these — your best ROAS", color: "#8a6300" },
+    { key: "lapsed",    label: "Lapsed (90d+ no buy)",   icon: "🔴", desc: "Win-back campaign — lowest cost retargeting", color: "#a5271e" },
     { key: "oneTime",   label: "One-Time Buyers",        icon: "🔄", desc: "Convert to repeat buyers — retention campaign",color: "#0082FB" },
     { key: "repeat",    label: "Repeat Buyers",          icon: "💎", desc: "Best Lookalike source — Lookalike → prospecting",color: "#8B5CF6" },
-    { key: "all",       label: "All Customers",          icon: "👥", desc: "Full list retargeting",                       color: "#8892A4" },
+    { key: "all",       label: "All Customers",          icon: "👥", desc: "Full list retargeting",                       color: "#8a8a8a" },
   ];
 
   return (
@@ -242,8 +242,8 @@ export default function Dashboard({ bc, activeBrand }) {
         {/* ── HEADER ─────────────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontWeight: 900, fontSize: 20, color: "#D8E0F0", letterSpacing: "-0.02em" }}>{activeBrand?.name || "Brand"} Performance</div>
-            <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>Live · Meta + Shopify{google && !google.notConnected ? " + Google" : ""}</div>
+            <div style={{ fontWeight: 900, fontSize: 20, color: "#1a1a1a", letterSpacing: "-0.02em" }}>{activeBrand?.name || "Brand"} Performance</div>
+            <div style={{ fontSize: 11, color: "#6b6b6b", marginTop: 2 }}>Live · Meta + Shopify{google && !google.notConnected ? " + Google" : ""}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             {/* Preset pills */}
@@ -256,9 +256,9 @@ export default function Dashboard({ bc, activeBrand }) {
                     if (key !== "custom") loadAll(key, customFrom, customTo, !!meta);
                   }}
                   style={{
-                    background: preset === key ? bc : "#0A0C14",
-                    border: `1px solid ${preset === key ? bc : "#1E2535"}`,
-                    borderRadius: 7, color: preset === key ? "#fff" : "#4A5568",
+                    background: preset === key ? bc : "#faf9f6",
+                    border: `1px solid ${preset === key ? bc : "#dddddd"}`,
+                    borderRadius: 7, color: preset === key ? "#fff" : "#6b6b6b",
                     padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer",
                   }}
                 >{label}</button>
@@ -269,12 +269,12 @@ export default function Dashboard({ bc, activeBrand }) {
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <input
                   type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                  style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#D8E0F0", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
+                  style={{ background: "#faf9f6", border: "1px solid #dddddd", borderRadius: 7, color: "#1a1a1a", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
                 />
-                <span style={{ color: "#4A5568", fontSize: 11 }}>→</span>
+                <span style={{ color: "#6b6b6b", fontSize: 11 }}>→</span>
                 <input
                   type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                  style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: "#D8E0F0", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
+                  style={{ background: "#faf9f6", border: "1px solid #dddddd", borderRadius: 7, color: "#1a1a1a", padding: "5px 10px", fontSize: 11, cursor: "pointer" }}
                 />
                 <button
                   onClick={() => customFrom && customTo && loadAll("custom", customFrom, customTo, !!meta)}
@@ -283,31 +283,31 @@ export default function Dashboard({ bc, activeBrand }) {
                 >Apply</button>
               </div>
             )}
-            <button onClick={() => loadAll(preset, customFrom, customTo, !!meta)} style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 7, color: refreshing ? bc : "#4A5568", padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>↻</button>
+            <button onClick={() => loadAll(preset, customFrom, customTo, !!meta)} style={{ background: "#faf9f6", border: "1px solid #dddddd", borderRadius: 7, color: refreshing ? bc : "#6b6b6b", padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>↻</button>
           </div>
         </div>
 
         {/* ── SCOREBOARD ─────────────────────────────────────────── */}
-        <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
+        <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Monthly Revenue vs {CUR}{(TARGET / 1000000).toFixed(1)}M Target</div>
-              <div style={{ fontSize: 30, fontWeight: 900, color: "#D8E0F0", letterSpacing: "-0.02em" }}>
+              <div style={{ fontSize: 10, color: "#6b6b6b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>Monthly Revenue vs {CUR}{(TARGET / 1000000).toFixed(1)}M Target</div>
+              <div style={{ fontSize: 30, fontWeight: 900, color: "#1a1a1a", letterSpacing: "-0.02em" }}>
                 {PKR(monthRev, CUR)}
-                <span style={{ fontSize: 15, color: "#4A5568", fontWeight: 400, marginLeft: 8 }}>/ {CUR}{(TARGET / 1000000).toFixed(1)}M</span>
+                <span style={{ fontSize: 15, color: "#6b6b6b", fontWeight: 400, marginLeft: 8 }}>/ {CUR}{(TARGET / 1000000).toFixed(1)}M</span>
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 28, fontWeight: 900, color: progressColor }}>{progress.toFixed(0)}%</div>
-              <div style={{ fontSize: 11, color: "#4A5568" }}>{daysLeft} days left this month</div>
+              <div style={{ fontSize: 11, color: "#6b6b6b" }}>{daysLeft} days left this month</div>
             </div>
           </div>
-          <div style={{ background: "#1E2535", borderRadius: 99, height: 8, overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ background: "#dddddd", borderRadius: 99, height: 8, overflow: "hidden", marginBottom: 8 }}>
             <div style={{ height: "100%", borderRadius: 99, background: progressColor, width: `${progress}%`, transition: "width 0.8s ease" }} />
           </div>
           {daysLeft > 0 && (
-            <div style={{ fontSize: 11, color: "#4A5568" }}>
-              Need <span style={{ color: "#D8E0F0", fontWeight: 700 }}>{PKR(dailyNeeded, CUR)}/day</span> for {daysLeft} remaining days · Gap: <span style={{ color: progressColor, fontWeight: 700 }}>{PKR(TARGET - monthRev, CUR)}</span>
+            <div style={{ fontSize: 11, color: "#6b6b6b" }}>
+              Need <span style={{ color: "#1a1a1a", fontWeight: 700 }}>{PKR(dailyNeeded, CUR)}/day</span> for {daysLeft} remaining days · Gap: <span style={{ color: progressColor, fontWeight: 700 }}>{PKR(TARGET - monthRev, CUR)}</span>
             </div>
           )}
         </div>
@@ -315,15 +315,15 @@ export default function Dashboard({ bc, activeBrand }) {
         {/* ── KEY METRICS ────────────────────────────────────────── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
           {[
-            { label: "Meta Spend (30d)", value: PKR(metaSpend, CUR), sub: metaSpend > BUDGET ? "⚠️ Over budget" : `${PKR(BUDGET - metaSpend, CUR)} remaining`, color: metaSpend > BUDGET ? "#EF4444" : bc },
+            { label: "Meta Spend (30d)", value: PKR(metaSpend, CUR), sub: metaSpend > BUDGET ? "⚠️ Over budget" : `${PKR(BUDGET - metaSpend, CUR)} remaining`, color: metaSpend > BUDGET ? "#a5271e" : bc },
             { label: "Blended ROAS",     value: metaRoas > 0 ? `${metaRoas.toFixed(1)}x` : "—", sub: `Target: ${(TARGET/BUDGET).toFixed(1)}x+`, color: roasColor(metaRoas) },
             { label: "Paid Orders",      value: NUM(monthOrders), sub: `${shopSummary?.period?.orders || 0} total orders`, color: bc },
             { label: "Active Campaigns", value: activeCamps.length, sub: `${allCamps.length} total campaigns`, color: bc },
           ].map(({ label, value, sub, color }, i) => (
-            <div key={i} style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
+            <div key={i} style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 10, color: "#6b6b6b", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>{label}</div>
               <div style={{ fontSize: 24, fontWeight: 900, color, letterSpacing: "-0.02em" }}>{value}</div>
-              <div style={{ fontSize: 11, color: "#2A3550", marginTop: 4 }}>{sub}</div>
+              <div style={{ fontSize: 11, color: "#999999", marginTop: 4 }}>{sub}</div>
             </div>
           ))}
         </div>
@@ -334,15 +334,15 @@ export default function Dashboard({ bc, activeBrand }) {
             would otherwise bury the one or two that are actually
             spending, so /api/google already filters to cost > 0 and we
             just render what it returns. ───────────────────────────── */}
-        <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "16px 18px", marginBottom: 14 }}>
+        <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 16, padding: "16px 18px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#D8E0F0" }}>Google Ads — Live Campaigns Only</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a" }}>Google Ads — Live Campaigns Only</div>
             {google && !google.notConnected && (
-              <div style={{ fontSize: 11, color: "#4A5568" }}>{google.liveCampaigns} live of {google.totalCampaigns} total</div>
+              <div style={{ fontSize: 11, color: "#6b6b6b" }}>{google.liveCampaigns} live of {google.totalCampaigns} total</div>
             )}
           </div>
           {!google || google.notConnected ? (
-            <div style={{ fontSize: 12, color: "#4A5568" }}>
+            <div style={{ fontSize: 12, color: "#6b6b6b" }}>
               Not connected for {activeBrand?.name || "this brand"}.
               {activeBrand?.googleAccountId ? (
                 <> <a href={`/api/oauth?platform=google&brand=${activeBrand.id}&customerId=${activeBrand.googleAccountId}`} target="_blank" rel="noreferrer" style={{ color: "#34A853" }}>Connect Google Ads →</a></>
@@ -351,19 +351,19 @@ export default function Dashboard({ bc, activeBrand }) {
               )}
             </div>
           ) : googleLive.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#4A5568" }}>No campaigns are currently spending.</div>
+            <div style={{ fontSize: 12, color: "#6b6b6b" }}>No campaigns are currently spending.</div>
           ) : (
             <div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 8, padding: "0 4px 8px", fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 8, padding: "0 4px 8px", fontSize: 10, color: "#6b6b6b", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 <div>Campaign</div><div>Spend</div><div>Clicks</div><div>CTR</div><div>CPC</div><div>ROAS</div>
               </div>
               {googleLive.map(c => (
-                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 8, padding: "8px 4px", borderTop: "1px solid #0F1520", alignItems: "center" }}>
-                  <div style={{ fontSize: 12, color: "#D8E0F0", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{PKR(c.cost, CUR)}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{Math.round(c.clicks)}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{c.ctr.toFixed(2)}%</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{PKR(c.cpc, CUR)}</div>
+                <div key={c.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 8, padding: "8px 4px", borderTop: "1px solid #e5e3de", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: "#1a1a1a", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{PKR(c.cost, CUR)}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{Math.round(c.clicks)}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{c.ctr.toFixed(2)}%</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{PKR(c.cpc, CUR)}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: roasColor(c.roas) }}>{c.roas > 0 ? `${c.roas.toFixed(1)}x` : "—"}</div>
                 </div>
               ))}
@@ -388,24 +388,24 @@ export default function Dashboard({ bc, activeBrand }) {
         )}
 
         {/* ── CAMPAIGN WAR ROOM ───────────────────────────────────── */}
-        <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
+        <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#D8E0F0" }}>Campaign War Room</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a" }}>Campaign War Room</div>
             <div style={{ display: "flex", gap: 14, fontSize: 11 }}>
-              <span style={{ color: "#00C853" }}>● ≥7x scale</span>
-              <span style={{ color: "#F59E0B" }}>● 3–7x optimise</span>
-              <span style={{ color: "#EF4444" }}>● &lt;3x kill/fix</span>
+              <span style={{ color: "#256b2e" }}>● ≥7x scale</span>
+              <span style={{ color: "#8a6300" }}>● 3–7x optimise</span>
+              <span style={{ color: "#a5271e" }}>● &lt;3x kill/fix</span>
             </div>
           </div>
 
           {/* Table header */}
           <div style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "5px 10px", marginBottom: 4 }}>
             {["Campaign", "Status", "Spend", "ROAS", "CTR", "CPM", "Purchases", "Frequency"].map((h, i) => (
-              <div key={i} style={{ fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700 }}>{h}</div>
+              <div key={i} style={{ fontSize: 10, color: "#6b6b6b", textTransform: "uppercase", letterSpacing: "0.07em", fontWeight: 700 }}>{h}</div>
             ))}
           </div>
 
-          {allCamps.length === 0 && <div style={{ color: "#4A5568", fontSize: 13, padding: "16px 10px" }}>No campaigns found.</div>}
+          {allCamps.length === 0 && <div style={{ color: "#6b6b6b", fontSize: 13, padding: "16px 10px" }}>No campaigns found.</div>}
 
           {allCamps.map((c, i) => {
             const ci = c.insights?.data?.[0] || {};
@@ -423,39 +423,39 @@ export default function Dashboard({ bc, activeBrand }) {
                   style={{
                     display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6,
                     padding: "10px", borderRadius: isOpen ? "10px 10px 0 0" : 10, alignItems: "center", cursor: "pointer",
-                    background: isActive ? roasBg(roas) : "#06080F",
-                    border: `1px solid ${isActive && roas > 0 ? roasColor(roas) + "25" : "#0F1520"}`,
+                    background: isActive ? roasBg(roas) : "#f7f7f5",
+                    border: `1px solid ${isActive && roas > 0 ? roasColor(roas) + "25" : "#e5e3de"}`,
                     opacity: isActive ? 1 : 0.45,
                   }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <span style={{ fontSize: 9, color: "#4A5568", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                    <span style={{ fontSize: 9, color: "#6b6b6b", display: "inline-block", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 12, color: "#D8E0F0", lineHeight: 1.3 }}>{c.name}</div>
-                      <div style={{ fontSize: 10, color: "#4A5568", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12, color: "#1a1a1a", lineHeight: 1.3 }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: "#6b6b6b", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
                         {c.objective}
                         {needsSetup(c.id) && (
-                          <span style={{ background: "#F59E0B18", color: "#F59E0B", border: "1px solid #F59E0B30", borderRadius: 4, padding: "1px 5px", fontSize: 9, fontWeight: 700 }}>
+                          <span style={{ background: "#8a630018", color: "#8a6300", border: "1px solid #8a630030", borderRadius: 4, padding: "1px 5px", fontSize: 9, fontWeight: 700 }}>
                             ⚠️ NEEDS SETUP
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <span style={{ background: isActive ? "#00C85318" : "#1E2535", color: isActive ? "#00C853" : "#4A5568", border: `1px solid ${isActive ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{c.status}</span>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "#D8E0F0" }}>{ci.spend ? PKR(ci.spend, CUR) : "—"}</div>
-                  <div style={{ fontWeight: 800, fontSize: 13, color: roas > 0 ? roasColor(roas) : "#4A5568" }}>{roas > 0 ? `${roas.toFixed(1)}x` : "—"}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.ctr ? `${parseFloat(ci.ctr).toFixed(2)}%` : "—"}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{ci.cpm ? PKR(ci.cpm, CUR) : "—"}</div>
-                  <div style={{ fontSize: 12, color: "#8892A4" }}>{purchases || "—"}</div>
-                  <div style={{ fontSize: 12, color: freq >= 3 ? "#EF4444" : "#8892A4", fontWeight: freq >= 3 ? 700 : 400 }}>
+                  <span style={{ background: isActive ? "#256b2e18" : "#dddddd", color: isActive ? "#256b2e" : "#6b6b6b", border: `1px solid ${isActive ? "#256b2e35" : "#999999"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{c.status}</span>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a" }}>{ci.spend ? PKR(ci.spend, CUR) : "—"}</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: roas > 0 ? roasColor(roas) : "#6b6b6b" }}>{roas > 0 ? `${roas.toFixed(1)}x` : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{ci.ctr ? `${parseFloat(ci.ctr).toFixed(2)}%` : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{ci.cpm ? PKR(ci.cpm, CUR) : "—"}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a" }}>{purchases || "—"}</div>
+                  <div style={{ fontSize: 12, color: freq >= 3 ? "#a5271e" : "#8a8a8a", fontWeight: freq >= 3 ? 700 : 400 }}>
                     {freq > 0 ? freq.toFixed(1) : "—"}{freq >= 3 && <span style={{ fontSize: 9, marginLeft: 3 }}>⚠️</span>}
                   </div>
                 </div>
 
                 {/* Ad Sets (expanded) */}
                 {isOpen && (
-                  <div style={{ background: "#06080F", border: "1px solid #0F1520", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "8px 10px 10px 28px" }}>
-                    {adsetsLoading[c.id] && <div style={{ color: "#4A5568", fontSize: 12, padding: "8px 0" }}>Loading ad sets…</div>}
+                  <div style={{ background: "#f7f7f5", border: "1px solid #e5e3de", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "8px 10px 10px 28px" }}>
+                    {adsetsLoading[c.id] && <div style={{ color: "#6b6b6b", fontSize: 12, padding: "8px 0" }}>Loading ad sets…</div>}
                     {(adsets[c.id] || []).map((as, j) => {
                       const ai = as.insights?.data?.[0] || {};
                       const asRoas = parseFloat(ai.purchase_roas?.[0]?.value || 0);
@@ -463,57 +463,57 @@ export default function Dashboard({ bc, activeBrand }) {
                       const asOpen = expandedAs[as.id];
                       return (
                         <div key={j} style={{ marginBottom: 4 }}>
-                          <div onClick={() => toggleAdset(as.id, dateQ)} style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "8px 10px", borderRadius: asOpen ? "8px 8px 0 0" : 8, alignItems: "center", cursor: "pointer", background: "#0A0C14", border: "1px solid #1E2535" }}>
+                          <div onClick={() => toggleAdset(as.id, dateQ)} style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "8px 10px", borderRadius: asOpen ? "8px 8px 0 0" : 8, alignItems: "center", cursor: "pointer", background: "#faf9f6", border: "1px solid #dddddd" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ fontSize: 9, color: "#2A3550", display: "inline-block", transform: asOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
+                              <span style={{ fontSize: 9, color: "#999999", display: "inline-block", transform: asOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▶</span>
                               <div>
-                                <div style={{ fontWeight: 500, fontSize: 11, color: "#C8D3E8" }}>{as.name}</div>
-                                <div style={{ fontSize: 10, color: "#4A5568" }}>Ad Set · {as.optimization_goal || ""}</div>
+                                <div style={{ fontWeight: 500, fontSize: 11, color: "#333333" }}>{as.name}</div>
+                                <div style={{ fontSize: 10, color: "#6b6b6b" }}>Ad Set · {as.optimization_goal || ""}</div>
                               </div>
                             </div>
-                            <span style={{ background: as.status === "ACTIVE" ? "#00C85318" : "#1E2535", color: as.status === "ACTIVE" ? "#00C853" : "#4A5568", border: `1px solid ${as.status === "ACTIVE" ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{as.status}</span>
-                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.spend ? PKR(ai.spend, CUR) : "—"}</div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: asRoas > 0 ? roasColor(asRoas) : "#4A5568" }}>{asRoas > 0 ? `${asRoas.toFixed(1)}x` : "—"}</div>
-                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.ctr ? `${parseFloat(ai.ctr).toFixed(2)}%` : "—"}</div>
-                            <div style={{ fontSize: 11, color: "#8892A4" }}>{ai.cpm ? PKR(ai.cpm, CUR) : "—"}</div>
-                            <div style={{ fontSize: 11, color: "#8892A4" }}>{asPurchases || "—"}</div>
+                            <span style={{ background: as.status === "ACTIVE" ? "#256b2e18" : "#dddddd", color: as.status === "ACTIVE" ? "#256b2e" : "#6b6b6b", border: `1px solid ${as.status === "ACTIVE" ? "#256b2e35" : "#999999"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{as.status}</span>
+                            <div style={{ fontSize: 11, color: "#8a8a8a" }}>{ai.spend ? PKR(ai.spend, CUR) : "—"}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: asRoas > 0 ? roasColor(asRoas) : "#6b6b6b" }}>{asRoas > 0 ? `${asRoas.toFixed(1)}x` : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8a8a8a" }}>{ai.ctr ? `${parseFloat(ai.ctr).toFixed(2)}%` : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8a8a8a" }}>{ai.cpm ? PKR(ai.cpm, CUR) : "—"}</div>
+                            <div style={{ fontSize: 11, color: "#8a8a8a" }}>{asPurchases || "—"}</div>
                             <div />
                           </div>
 
                           {/* Ads (expanded) */}
                           {asOpen && (
-                            <div style={{ background: "#04050A", border: "1px solid #0F1520", borderTop: "none", borderRadius: "0 0 8px 8px", padding: "6px 8px 8px 24px" }}>
-                              {adsLoading[as.id] && <div style={{ color: "#4A5568", fontSize: 11, padding: "6px 0" }}>Loading ads…</div>}
+                            <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderTop: "none", borderRadius: "0 0 8px 8px", padding: "6px 8px 8px 24px" }}>
+                              {adsLoading[as.id] && <div style={{ color: "#6b6b6b", fontSize: 11, padding: "6px 0" }}>Loading ads…</div>}
                               {(ads[as.id] || []).map((ad, k) => {
                                 const adi = ad.insights?.data?.[0] || {};
                                 const adRoas = parseFloat(adi.purchase_roas?.[0]?.value || 0);
                                 const adPurchases = adi.actions?.find(a => a.action_type === "purchase")?.value || 0;
                                 return (
-                                  <div key={k} style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "7px 10px", borderRadius: 7, marginBottom: 3, alignItems: "center", background: "#0A0C14", border: "1px solid #0F1520" }}>
+                                  <div key={k} style={{ display: "grid", gridTemplateColumns: "2.2fr 90px 110px 90px 75px 80px 80px 80px", gap: 6, padding: "7px 10px", borderRadius: 7, marginBottom: 3, alignItems: "center", background: "#faf9f6", border: "1px solid #e5e3de" }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                       {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", flexShrink: 0 }} />}
                                       <div>
-                                        <div style={{ fontWeight: 500, fontSize: 11, color: "#8892A4" }}>{ad.name}</div>
-                                        <div style={{ fontSize: 10, color: "#2A3550" }}>Ad</div>
+                                        <div style={{ fontWeight: 500, fontSize: 11, color: "#8a8a8a" }}>{ad.name}</div>
+                                        <div style={{ fontSize: 10, color: "#999999" }}>Ad</div>
                                       </div>
                                     </div>
-                                    <span style={{ background: ad.status === "ACTIVE" ? "#00C85318" : "#1E2535", color: ad.status === "ACTIVE" ? "#00C853" : "#4A5568", border: `1px solid ${ad.status === "ACTIVE" ? "#00C85335" : "#2A3550"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{ad.status}</span>
-                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.spend ? PKR(adi.spend, CUR) : "—"}</div>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: adRoas > 0 ? roasColor(adRoas) : "#4A5568" }}>{adRoas > 0 ? `${adRoas.toFixed(1)}x` : "—"}</div>
-                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.ctr ? `${parseFloat(adi.ctr).toFixed(2)}%` : "—"}</div>
-                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adi.cpm ? PKR(adi.cpm, CUR) : "—"}</div>
-                                    <div style={{ fontSize: 11, color: "#8892A4" }}>{adPurchases || "—"}</div>
+                                    <span style={{ background: ad.status === "ACTIVE" ? "#256b2e18" : "#dddddd", color: ad.status === "ACTIVE" ? "#256b2e" : "#6b6b6b", border: `1px solid ${ad.status === "ACTIVE" ? "#256b2e35" : "#999999"}`, borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{ad.status}</span>
+                                    <div style={{ fontSize: 11, color: "#8a8a8a" }}>{adi.spend ? PKR(adi.spend, CUR) : "—"}</div>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: adRoas > 0 ? roasColor(adRoas) : "#6b6b6b" }}>{adRoas > 0 ? `${adRoas.toFixed(1)}x` : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8a8a8a" }}>{adi.ctr ? `${parseFloat(adi.ctr).toFixed(2)}%` : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8a8a8a" }}>{adi.cpm ? PKR(adi.cpm, CUR) : "—"}</div>
+                                    <div style={{ fontSize: 11, color: "#8a8a8a" }}>{adPurchases || "—"}</div>
                                     <div />
                                   </div>
                                 );
                               })}
-                              {!adsLoading[as.id] && (ads[as.id] || []).length === 0 && <div style={{ color: "#2A3550", fontSize: 11, padding: "6px 0" }}>No ads found.</div>}
+                              {!adsLoading[as.id] && (ads[as.id] || []).length === 0 && <div style={{ color: "#999999", fontSize: 11, padding: "6px 0" }}>No ads found.</div>}
                             </div>
                           )}
                         </div>
                       );
                     })}
-                    {!adsetsLoading[c.id] && (adsets[c.id] || []).length === 0 && <div style={{ color: "#2A3550", fontSize: 12, padding: "8px 0" }}>No ad sets found.</div>}
+                    {!adsetsLoading[c.id] && (adsets[c.id] || []).length === 0 && <div style={{ color: "#999999", fontSize: 12, padding: "8px 0" }}>No ad sets found.</div>}
                   </div>
                 )}
               </div>
@@ -525,23 +525,23 @@ export default function Dashboard({ bc, activeBrand }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
 
           {/* Top Products */}
-          <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px" }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#D8E0F0", marginBottom: 3 }}>Top Selling Products</div>
-            <div style={{ fontSize: 11, color: "#4A5568", marginBottom: 16 }}>Last 30 days · Shopify paid orders</div>
+          <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 16, padding: "18px 20px" }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a", marginBottom: 3 }}>Top Selling Products</div>
+            <div style={{ fontSize: 11, color: "#6b6b6b", marginBottom: 16 }}>Last 30 days · Shopify paid orders</div>
             {shopProducts.slice(0, 8).map((p, i) => {
               const max = shopProducts[0]?.revenue || 1;
               const w = (p.revenue / max) * 100;
               return (
                 <div key={i} style={{ marginBottom: 11 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: i < 3 ? "#D8E0F0" : "#8892A4" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: i < 3 ? "#1a1a1a" : "#8a8a8a" }}>
                       {i < 3 && <span style={{ color: bc, marginRight: 5, fontSize: 10 }}>#{i + 1}</span>}
                       {p.title}
                     </div>
-                    <div style={{ fontSize: 11, color: "#4A5568" }}>{p.quantity} · {PKR(p.revenue, CUR)}</div>
+                    <div style={{ fontSize: 11, color: "#6b6b6b" }}>{p.quantity} · {PKR(p.revenue, CUR)}</div>
                   </div>
-                  <div style={{ background: "#1E2535", borderRadius: 99, height: 4, overflow: "hidden" }}>
-                    <div style={{ height: "100%", borderRadius: 99, background: i < 3 ? bc : "#2A3550", width: `${w}%` }} />
+                  <div style={{ background: "#dddddd", borderRadius: 99, height: 4, overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 99, background: i < 3 ? bc : "#999999", width: `${w}%` }} />
                   </div>
                 </div>
               );
@@ -549,20 +549,20 @@ export default function Dashboard({ bc, activeBrand }) {
           </div>
 
           {/* Customer Audiences */}
-          <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px" }}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "#D8E0F0", marginBottom: 3 }}>Customer Audiences</div>
-            <div style={{ fontSize: 11, color: "#4A5568", marginBottom: 16 }}>Push Shopify segments → Meta Custom Audiences</div>
+          <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 16, padding: "18px 20px" }}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a", marginBottom: 3 }}>Customer Audiences</div>
+            <div style={{ fontSize: 11, color: "#6b6b6b", marginBottom: 16 }}>Push Shopify segments → Meta Custom Audiences</div>
             {SEGMENTS.map(({ key, label, icon, desc, color }) => {
               const count = shopCustomers?.counts?.[key] || 0;
               const done = audienceDone[key];
               const busy = audienceLoading[key];
               return (
-                <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 9, marginBottom: 6, background: "#06080F", border: `1px solid ${done ? color + "30" : "#0F1520"}` }}>
+                <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: 9, marginBottom: 6, background: "#f7f7f5", border: `1px solid ${done ? color + "30" : "#e5e3de"}` }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9, flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, flexShrink: 0 }}>{icon}</div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#C8D3E8" }}>{label}</div>
-                      <div style={{ fontSize: 10, color: "#4A5568" }}>{desc}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#333333" }}>{label}</div>
+                      <div style={{ fontSize: 10, color: "#6b6b6b" }}>{desc}</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 8 }}>
@@ -571,8 +571,8 @@ export default function Dashboard({ bc, activeBrand }) {
                       onClick={() => pushToMeta(key, label, count)}
                       disabled={busy || done || !count}
                       style={{
-                        background: done ? color + "20" : "#1E2535", border: `1px solid ${done ? color + "40" : "#2A3550"}`,
-                        color: done ? color : "#4A5568", borderRadius: 6, padding: "3px 9px", fontSize: 10,
+                        background: done ? color + "20" : "#dddddd", border: `1px solid ${done ? color + "40" : "#999999"}`,
+                        color: done ? color : "#6b6b6b", borderRadius: 6, padding: "3px 9px", fontSize: 10,
                         fontWeight: 700, cursor: !count || done ? "not-allowed" : "pointer", whiteSpace: "nowrap",
                         opacity: !count ? 0.4 : 1,
                       }}
@@ -587,11 +587,11 @@ export default function Dashboard({ bc, activeBrand }) {
         </div>
 
         {/* ── AI DAILY BRIEF ──────────────────────────────────────── */}
-        <div style={{ background: "#0A0C14", border: `1px solid ${bc}25`, borderRadius: 16, padding: "18px 20px", marginBottom: 24 }}>
+        <div style={{ background: "#faf9f6", border: `1px solid ${bc}25`, borderRadius: 16, padding: "18px 20px", marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div>
-              <div style={{ fontWeight: 800, fontSize: 14, color: "#D8E0F0" }}>AI Daily Brief</div>
-              <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>What to kill, scale, and create — from live data right now</div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a" }}>AI Daily Brief</div>
+              <div style={{ fontSize: 11, color: "#6b6b6b", marginTop: 2 }}>What to kill, scale, and create — from live data right now</div>
             </div>
             <button
               onClick={generateBrief}
@@ -605,11 +605,11 @@ export default function Dashboard({ bc, activeBrand }) {
           </div>
 
           {brief ? (
-            <div style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 11, padding: "16px 18px", fontSize: 13, color: "#C8D3E8", lineHeight: 2, whiteSpace: "pre-wrap" }}>
+            <div style={{ background: "#f7f7f5", border: "1px solid #e5e3de", borderRadius: 11, padding: "16px 18px", fontSize: 13, color: "#333333", lineHeight: 2, whiteSpace: "pre-wrap" }}>
               {brief}
             </div>
           ) : (
-            <div style={{ textAlign: "center", padding: "28px 0", color: "#2A3550", fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: "28px 0", color: "#999999", fontSize: 13 }}>
               Hit "Generate Brief" for your AI-powered action plan based on live Shopify + Meta data.
             </div>
           )}

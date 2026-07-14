@@ -10,8 +10,8 @@ const PKR = (n) => {
 };
 
 const PRIORITY_STYLE = {
-  HIGH:        { bg: "#EF444412", border: "#EF444430", dot: "#EF4444", label: "Action Required" },
-  MEDIUM:      { bg: "#F59E0B12", border: "#F59E0B30", dot: "#F59E0B", label: "Recommended" },
+  HIGH:        { bg: "#a5271e12", border: "#a5271e30", dot: "#a5271e", label: "Action Required" },
+  MEDIUM:      { bg: "#8a630012", border: "#8a630030", dot: "#8a6300", label: "Recommended" },
   OPPORTUNITY: { bg: "#0082FB12", border: "#0082FB30", dot: "#0082FB", label: "Opportunity" },
 };
 
@@ -305,20 +305,20 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
   const visible = suggestions.filter(s => !dismissed[s.id]);
 
   return (
-    <div style={{ background: "#0A0C14", border: "1px solid #0F1520", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
+    <div style={{ background: "#faf9f6", border: "1px solid #e5e3de", borderRadius: 16, padding: "18px 20px", marginBottom: 14 }}>
 
       {/* Header + controls */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 14, color: "#D8E0F0" }}>AI Action Center</div>
-          <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>Suggestions based on live data · Approve to execute</div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: "#1a1a1a" }}>AI Action Center</div>
+          <div style={{ fontSize: 11, color: "#6b6b6b", marginTop: 2 }}>Suggestions based on live data · Approve to execute</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input
             value={theme}
             onChange={e => setTheme(e.target.value)}
             placeholder="What's coming up? e.g. Eid, Summer Sale, Back to School…"
-            style={{ background: "#06080F", border: "1px solid #1E2535", borderRadius: 8, color: "#D8E0F0", padding: "7px 12px", fontSize: 12, width: 280, outline: "none" }}
+            style={{ background: "#f7f7f5", border: "1px solid #dddddd", borderRadius: 8, color: "#1a1a1a", padding: "7px 12px", fontSize: 12, width: 280, outline: "none" }}
             onKeyDown={e => e.key === "Enter" && getSuggestions()}
           />
           <button
@@ -345,18 +345,18 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
                 <div style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{s.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "#D8E0F0" }}>{s.title}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>{s.title}</div>
                     <span style={{ background: ps.bg, color: ps.dot, border: `1px solid ${ps.border}`, borderRadius: 99, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>{ps.label}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "#8892A4", lineHeight: 1.6, marginBottom: 6 }}>{s.reason}</div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a", lineHeight: 1.6, marginBottom: 6 }}>{s.reason}</div>
                   <div style={{ fontSize: 11, color: ps.dot, fontWeight: 600 }}>Impact: {s.impact}</div>
-                  {isDone && <div style={{ fontSize: 11, color: "#00C853", marginTop: 6, fontWeight: 600 }}>✓ {isDone}</div>}
+                  {isDone && <div style={{ fontSize: 11, color: "#256b2e", marginTop: 6, fontWeight: 600 }}>✓ {isDone}</div>}
                 </div>
                 {!isDone && (
                   <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
                     <button
                       onClick={() => setDismissed(p => ({ ...p, [s.id]: true }))}
-                      style={{ background: "transparent", border: "1px solid #2A3550", borderRadius: 7, color: "#4A5568", padding: "6px 12px", fontSize: 11, cursor: "pointer" }}
+                      style={{ background: "transparent", border: "1px solid #999999", borderRadius: 7, color: "#6b6b6b", padding: "6px 12px", fontSize: 11, cursor: "pointer" }}
                     >Dismiss</button>
                     <button
                       onClick={() => approve(s)}
@@ -376,27 +376,27 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
       )}
 
       {!loading && apiError && (
-        <div style={{ background: "#EF444412", border: "1px solid #EF444430", borderRadius: 10, padding: "12px 16px", color: "#EF4444", fontSize: 12 }}>
+        <div style={{ background: "#a5271e12", border: "1px solid #a5271e30", borderRadius: 10, padding: "12px 16px", color: "#a5271e", fontSize: 12 }}>
           ⚠️ {apiError}
         </div>
       )}
 
       {!loading && !apiError && suggestions.length === 0 && (
-        <div style={{ textAlign: "center", padding: "20px 0", color: "#2A3550", fontSize: 13 }}>
+        <div style={{ textAlign: "center", padding: "20px 0", color: "#999999", fontSize: 13 }}>
           Hit "Get Actions" to analyze your live data and get specific recommendations.
         </div>
       )}
 
       {/* Campaign Wizard Modal */}
       {(wizardLoading || wizard) && (
-        <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={e => { if (e.target === e.currentTarget && !pushing) { setWizard(null); setWizardLoading(false); } }}>
-          <div style={{ background: "#0A0C14", border: "1px solid #1E2535", borderRadius: 18, width: "100%", maxWidth: 720, maxHeight: "90vh", overflowY: "auto", padding: "24px" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={e => { if (e.target === e.currentTarget && !pushing) { setWizard(null); setWizardLoading(false); } }}>
+          <div style={{ background: "#faf9f6", border: "1px solid #dddddd", borderRadius: 18, width: "100%", maxWidth: 720, maxHeight: "90vh", overflowY: "auto", padding: "24px" }}>
 
             {wizardLoading && (
               <div style={{ textAlign: "center", padding: "48px 0" }}>
                 <div style={{ width: 36, height: 36, border: `3px solid ${bc}30`, borderTopColor: bc, borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto 14px" }} />
-                <div style={{ color: "#D8E0F0", fontWeight: 700, fontSize: 14 }}>Building your campaign…</div>
-                <div style={{ color: "#4A5568", fontSize: 12, marginTop: 4 }}>AI is writing all copy and structure</div>
+                <div style={{ color: "#1a1a1a", fontWeight: 700, fontSize: 14 }}>Building your campaign…</div>
+                <div style={{ color: "#6b6b6b", fontSize: 12, marginTop: 4 }}>AI is writing all copy and structure</div>
               </div>
             )}
 
@@ -404,21 +404,21 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
               <>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 17, color: "#D8E0F0" }}>{wizard.campaign?.name}</div>
-                    <div style={{ fontSize: 12, color: "#4A5568", marginTop: 3 }}>{wizard.summary}</div>
-                    <div style={{ fontSize: 11, marginTop: 4, color: (wizard.adSets?.length > 0) ? "#00C853" : "#EF4444", fontWeight: 700 }}>
+                    <div style={{ fontWeight: 800, fontSize: 17, color: "#1a1a1a" }}>{wizard.campaign?.name}</div>
+                    <div style={{ fontSize: 12, color: "#6b6b6b", marginTop: 3 }}>{wizard.summary}</div>
+                    <div style={{ fontSize: 11, marginTop: 4, color: (wizard.adSets?.length > 0) ? "#256b2e" : "#a5271e", fontWeight: 700 }}>
                       {wizard.adSets?.length > 0 ? `✓ ${wizard.adSets.length} ad sets loaded` : "⚠️ 0 ad sets — AI response incomplete, close and try Build Campaign again"}
                     </div>
                   </div>
-                  <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: "none", border: "none", color: "#4A5568", fontSize: 22, cursor: "pointer", padding: "0 4px" }}>×</button>
+                  <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: "none", border: "none", color: "#6b6b6b", fontSize: 22, cursor: "pointer", padding: "0 4px" }}>×</button>
                 </div>
 
                 {wizard.error ? (
-                  <div style={{ color: "#EF4444", fontSize: 13 }}>{wizard.error}</div>
+                  <div style={{ color: "#a5271e", fontSize: 13 }}>{wizard.error}</div>
                 ) : (
                   <>
                     {/* Campaign overview */}
-                    <div style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+                    <div style={{ background: "#f7f7f5", border: "1px solid #e5e3de", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                         {[
                           ["Objective", wizard.campaign?.objective],
@@ -426,8 +426,8 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
                           ["Status", "Will be PAUSED"],
                         ].map(([l, v], i) => (
                           <div key={i}>
-                            <div style={{ fontSize: 10, color: "#4A5568", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{l}</div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#D8E0F0" }}>{v}</div>
+                            <div style={{ fontSize: 10, color: "#6b6b6b", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{l}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{v}</div>
                           </div>
                         ))}
                       </div>
@@ -435,33 +435,33 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
 
                     {/* Ad Sets with copy */}
                     {(wizard.adSets || []).map((adSet, i) => (
-                      <div key={i} style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
+                      <div key={i} style={{ background: "#f7f7f5", border: "1px solid #e5e3de", borderRadius: 12, padding: "14px 16px", marginBottom: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: "#D8E0F0" }}>{adSet.name}</div>
-                            <div style={{ fontSize: 11, color: "#4A5568", marginTop: 2 }}>{adSet.purpose} · {adSet.funnel} · {PKR((adSet.daily_budget || 0) / 100)}/day</div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>{adSet.name}</div>
+                            <div style={{ fontSize: 11, color: "#6b6b6b", marginTop: 2 }}>{adSet.purpose} · {adSet.funnel} · {PKR((adSet.daily_budget || 0) / 100)}/day</div>
                           </div>
                           <span style={{ background: `${bc}18`, color: bc, border: `1px solid ${bc}30`, borderRadius: 6, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{adSet.funnel}</span>
                         </div>
-                        <div style={{ fontSize: 11, color: "#4A5568", marginBottom: 10 }}>Targeting: {adSet.targeting_description}</div>
+                        <div style={{ fontSize: 11, color: "#6b6b6b", marginBottom: 10 }}>Targeting: {adSet.targeting_description}</div>
 
                         {/* Ad copies */}
                         {(adSet.ads || []).map((ad, j) => (
-                          <div key={j} style={{ background: "#0A0C14", border: `1px solid ${bc}20`, borderRadius: 9, padding: "12px 14px", marginBottom: 8 }}>
+                          <div key={j} style={{ background: "#faf9f6", border: `1px solid ${bc}20`, borderRadius: 9, padding: "12px 14px", marginBottom: 8 }}>
                             <div style={{ fontSize: 10, color: bc, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Ad Variation {j + 1}</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                               <div>
-                                <div style={{ fontSize: 10, color: "#4A5568", marginBottom: 3 }}>HEADLINE</div>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: "#D8E0F0" }}>{ad.headline}</div>
+                                <div style={{ fontSize: 10, color: "#6b6b6b", marginBottom: 3 }}>HEADLINE</div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{ad.headline}</div>
                               </div>
                               <div>
-                                <div style={{ fontSize: 10, color: "#4A5568", marginBottom: 3 }}>DESCRIPTION</div>
-                                <div style={{ fontSize: 12, color: "#8892A4" }}>{ad.description}</div>
+                                <div style={{ fontSize: 10, color: "#6b6b6b", marginBottom: 3 }}>DESCRIPTION</div>
+                                <div style={{ fontSize: 12, color: "#8a8a8a" }}>{ad.description}</div>
                               </div>
                             </div>
-                            <div style={{ fontSize: 10, color: "#4A5568", marginBottom: 3 }}>BODY COPY</div>
-                            <div style={{ fontSize: 12, color: "#C8D3E8", lineHeight: 1.6, background: "#06080F", borderRadius: 7, padding: "8px 10px", marginBottom: 8 }}>{ad.primary_text}</div>
-                            <div style={{ fontSize: 11, color: "#F59E0B", background: "#F59E0B10", border: "1px solid #F59E0B20", borderRadius: 6, padding: "6px 10px" }}>
+                            <div style={{ fontSize: 10, color: "#6b6b6b", marginBottom: 3 }}>BODY COPY</div>
+                            <div style={{ fontSize: 12, color: "#333333", lineHeight: 1.6, background: "#f7f7f5", borderRadius: 7, padding: "8px 10px", marginBottom: 8 }}>{ad.primary_text}</div>
+                            <div style={{ fontSize: 11, color: "#8a6300", background: "#8a630010", border: "1px solid #8a630020", borderRadius: 6, padding: "6px 10px" }}>
                               📸 Image needed: {ad.image_note}
                             </div>
                           </div>
@@ -471,14 +471,14 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
 
                     {/* Creative guide */}
                     {wizard.creativeGuide && (
-                      <div style={{ background: "#F59E0B10", border: "1px solid #F59E0B25", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
-                        <div style={{ fontSize: 11, color: "#F59E0B", fontWeight: 700, marginBottom: 4 }}>📸 Creative Guide (shoot this)</div>
-                        <div style={{ fontSize: 12, color: "#C8D3E8", lineHeight: 1.6 }}>{wizard.creativeGuide}</div>
+                      <div style={{ background: "#8a630010", border: "1px solid #8a630025", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+                        <div style={{ fontSize: 11, color: "#8a6300", fontWeight: 700, marginBottom: 4 }}>📸 Creative Guide (shoot this)</div>
+                        <div style={{ fontSize: 12, color: "#333333", lineHeight: 1.6 }}>{wizard.creativeGuide}</div>
                       </div>
                     )}
 
                     <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                      <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: "transparent", border: "1px solid #2A3550", borderRadius: 9, color: "#4A5568", padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                      <button onClick={() => { setWizard(null); setPushResult(null); }} style={{ background: "transparent", border: "1px solid #999999", borderRadius: 9, color: "#6b6b6b", padding: "10px 20px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
                       <button
                         onClick={pushToMeta}
                         disabled={pushing || !wizard.adSets?.length}
@@ -498,54 +498,54 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
             {pushResult && (
               <div>
                 {pushResult.error ? (
-                  <div style={{ color: "#EF4444", fontSize: 13, padding: "20px 0" }}>Failed: {pushResult.error}</div>
+                  <div style={{ color: "#a5271e", fontSize: 13, padding: "20px 0" }}>Failed: {pushResult.error}</div>
                 ) : (
                   <>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: "#00C853", marginBottom: 4 }}>✓ Campaign created in Meta (PAUSED)</div>
-                    <div style={{ fontSize: 12, color: pushResult.adSets.filter(a=>a.status==="created").length > 0 ? "#00C853" : "#EF4444", marginBottom: 16 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: "#256b2e", marginBottom: 4 }}>✓ Campaign created in Meta (PAUSED)</div>
+                    <div style={{ fontSize: 12, color: pushResult.adSets.filter(a=>a.status==="created").length > 0 ? "#256b2e" : "#a5271e", marginBottom: 16 }}>
                       {pushResult.adSets.filter(a=>a.status==="created").length} of {pushResult.adSets.length} ad sets created
                     </div>
-                    <div style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
-                      <div style={{ fontSize: 12, color: "#4A5568", marginBottom: 4 }}>Campaign ID</div>
-                      <div style={{ fontSize: 13, color: "#D8E0F0", fontWeight: 600 }}>{pushResult.campaign?.name} — {pushResult.campaign?.id}</div>
+                    <div style={{ background: "#f7f7f5", border: "1px solid #e5e3de", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, color: "#6b6b6b", marginBottom: 4 }}>Campaign ID</div>
+                      <div style={{ fontSize: 13, color: "#1a1a1a", fontWeight: 600 }}>{pushResult.campaign?.name} — {pushResult.campaign?.id}</div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#D8E0F0", marginBottom: 10 }}>Ad Sets Created:</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>Ad Sets Created:</div>
                     {pushResult.adSets.map((as, i) => (
-                      <div key={i} style={{ background: as.status === "created" ? "#00C85310" : "#EF444410", border: `1px solid ${as.status === "created" ? "#00C85330" : "#EF444430"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
+                      <div key={i} style={{ background: as.status === "created" ? "#256b2e10" : "#a5271e10", border: `1px solid ${as.status === "created" ? "#256b2e30" : "#a5271e30"}`, borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: as.audienceNote ? 6 : 0 }}>
-                          <div style={{ fontSize: 12, color: "#D8E0F0", fontWeight: 600 }}>{as.name} <span style={{ color: "#4A5568", fontWeight: 400 }}>({as.funnel})</span></div>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#00C853" : "#EF4444" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
+                          <div style={{ fontSize: 12, color: "#1a1a1a", fontWeight: 600 }}>{as.name} <span style={{ color: "#6b6b6b", fontWeight: 400 }}>({as.funnel})</span></div>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: as.status === "created" ? "#256b2e" : "#a5271e" }}>{as.status === "created" ? "✓ Created" : "✗ Failed"}</span>
                         </div>
-                        {as.audienceNote && <div style={{ fontSize: 11, color: "#00C853", marginTop: 4 }}>👥 {as.audienceNote}</div>}
+                        {as.audienceNote && <div style={{ fontSize: 11, color: "#256b2e", marginTop: 4 }}>👥 {as.audienceNote}</div>}
                         {as.createdAds?.length > 0 && (
                           <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {as.createdAds.map((ad, ai) => (
-                              <div key={ai} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: ad.status === "created" ? "#00C85318" : "#EF444418", color: ad.status === "created" ? "#00C853" : "#EF4444", border: `1px solid ${ad.status === "created" ? "#00C85330" : "#EF444430"}`, wordBreak: "break-all" }}>
+                              <div key={ai} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 6, background: ad.status === "created" ? "#256b2e18" : "#a5271e18", color: ad.status === "created" ? "#256b2e" : "#a5271e", border: `1px solid ${ad.status === "created" ? "#256b2e30" : "#a5271e30"}`, wordBreak: "break-all" }}>
                                 {ad.status === "created" ? `✓ Ad ${ai + 1} created` : `✗ Ad ${ai + 1}: ${ad.error}`}
                               </div>
                             ))}
                           </div>
                         )}
                         {!as.error && as.status === "created" && !as.createdAds?.length && (
-                          <div style={{ fontSize: 11, color: "#F59E0B", marginTop: 4 }}>⚠️ No existing images found — add ads manually in Meta Ads Manager</div>
+                          <div style={{ fontSize: 11, color: "#8a6300", marginTop: 4 }}>⚠️ No existing images found — add ads manually in Meta Ads Manager</div>
                         )}
                         {as.error && (
                           <div style={{ marginTop: 6 }}>
-                            <div style={{ fontSize: 11, color: "#EF4444", background: "#EF444418", borderRadius: 6, padding: "6px 8px", wordBreak: "break-all", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>ERROR: {as.error}</div>
+                            <div style={{ fontSize: 11, color: "#a5271e", background: "#a5271e18", borderRadius: 6, padding: "6px 8px", wordBreak: "break-all", whiteSpace: "pre-wrap", fontFamily: "monospace" }}>ERROR: {as.error}</div>
                           </div>
                         )}
                       </div>
                     ))}
 
                     {/* Copy for Meta Ads Manager */}
-                    <div style={{ marginTop: 16, marginBottom: 6, fontSize: 13, fontWeight: 700, color: "#D8E0F0" }}>Ad Copy — paste into Meta Ads Manager</div>
-                    <div style={{ fontSize: 11, color: "#4A5568", marginBottom: 10 }}>Go to each ad set → Create Ad → paste this copy → upload your image/video → save as draft</div>
+                    <div style={{ marginTop: 16, marginBottom: 6, fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Ad Copy — paste into Meta Ads Manager</div>
+                    <div style={{ fontSize: 11, color: "#6b6b6b", marginBottom: 10 }}>Go to each ad set → Create Ad → paste this copy → upload your image/video → save as draft</div>
                     {pushResult.adSets.filter(as => as.status === "created" && as.ads?.length).map((as, i) => (
-                      <div key={i} style={{ background: "#06080F", border: "1px solid #0F1520", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                      <div key={i} style={{ background: "#f7f7f5", border: "1px solid #e5e3de", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
                         <div style={{ fontSize: 11, color: bc, fontWeight: 700, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.07em" }}>{as.name}</div>
                         {as.ads.map((ad, j) => (
-                          <div key={j} style={{ background: "#0A0C14", border: `1px solid ${bc}20`, borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
-                            <div style={{ fontSize: 10, color: "#4A5568", marginBottom: 6, fontWeight: 700 }}>VARIATION {j + 1}</div>
+                          <div key={j} style={{ background: "#faf9f6", border: `1px solid ${bc}20`, borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+                            <div style={{ fontSize: 10, color: "#6b6b6b", marginBottom: 6, fontWeight: 700 }}>VARIATION {j + 1}</div>
                             {[
                               ["Headline", ad.headline],
                               ["Primary Text", ad.primary_text],
@@ -554,11 +554,11 @@ export default function AIActions({ bc, activeBrand, liveData, onCampaignCreated
                               ["CTA", ad.call_to_action],
                             ].map(([label, val]) => val ? (
                               <div key={label} style={{ marginBottom: 6 }}>
-                                <div style={{ fontSize: 10, color: "#4A5568" }}>{label}</div>
-                                <div style={{ fontSize: 12, color: "#D8E0F0", background: "#06080F", borderRadius: 5, padding: "5px 8px", marginTop: 2, lineHeight: 1.5, userSelect: "all" }}>{val}</div>
+                                <div style={{ fontSize: 10, color: "#6b6b6b" }}>{label}</div>
+                                <div style={{ fontSize: 12, color: "#1a1a1a", background: "#f7f7f5", borderRadius: 5, padding: "5px 8px", marginTop: 2, lineHeight: 1.5, userSelect: "all" }}>{val}</div>
                               </div>
                             ) : null)}
-                            {ad.image_note && <div style={{ fontSize: 11, color: "#F59E0B", marginTop: 6 }}>📸 {ad.image_note}</div>}
+                            {ad.image_note && <div style={{ fontSize: 11, color: "#8a6300", marginTop: 6 }}>📸 {ad.image_note}</div>}
                           </div>
                         ))}
                       </div>

@@ -1,11 +1,62 @@
 // Brand-aware Shopify data endpoint.
-// Every call now takes ?brand=<id> and looks up that brand's store/token
-// from the credentials table (api/_lib/db.js) instead of a single global
+// Every call takes ?brand=<id> and looks up that brand's store/token from
+// the credentials table (api/_lib/db.js) instead of a single global
 // SHOPIFY_STORE / SHOPIFY_ACCESS_TOKEN env var. This is what lets julke and
 // qalb (and anything else) have their own connected Shopify store at the
 // same time — nothing gets revoked when you look at a different brand.
 
 import { getCredential } from './_lib/db.js';
+
+// Shopify's REST list endpoints hard-cap at limit=250 per page and paginate
+// via the Link response HEADER (cursor-based), not a JSON body field. Every
+// action below used to silently truncate at the first 250 rows — on an
+// account with more orders/customers/products than that in the window, this
+// undercounted revenue (confirmed against Shopify's own Analytics: dashboard
+// showed ~622K vs a real ~2.75M gross sales for the same month). This helper
+// follows the Link header until exhausted (capped for safety on Vercel's
+// execution time limit).
+async function fetchAllShopify(url, headers, key, maxPages = 20) {
+  let all = [];
+  let next = url;
+  let pages = 0;
+  while (next && pages < maxPages) {
+    const r = await fetch(next, { headers });
+    const json = await r.json();
+    if (json.errors) return { error: json.errors };
+    all = all.concat(json[key] || []);
+    const linkHeader = r.headers.get('link') || r.headers.get('Link');
+    const match = linkHeader && linkHeader.split(',').find(p => p.includes('rel="next"'));
+    next = match ? match.split(';')[0].trim().replace(/^<|>$/g, '') : null;
+    pages++;
+  }
+  return { [key]: all };
+}
+
+// Best-effort channel classification from Shopify's raw order fields.
+// We don't have Google Analytics wired in — this reads what Shopify itself
+// already records on every order (referring_site / landing_site's UTM
+// params / source_name) so "sales by traffic driver" works today without a
+// new integration. UTM (utm_source on landing_site) wins when present since
+// it's the most deliberate signal; otherwise we classify the referring
+// domain; no referrer at all = Direct.
+function classifyChannel(order) {
+  const landing = (order.landing_site || '').toLowerCase();
+  const utmMatch = landing.match(/[?&]utm_source=([^&]+)/);
+  if (utmMatch) {
+    const src = decodeURIComponent(utmMatch[1]).toLowerCase();
+    if (src.includes('google')) return 'Google';
+    if (src.includes('fb') || src.includes('facebook') || src.includes('meta') || src.includes('ig') || src.includes('instagram')) return 'Meta';
+    if (src.includes('email') || src.includes('klaviyo') || src.includes('mailchimp')) return 'Email';
+    if (src.includes('tiktok')) return 'TikTok';
+    return src.charAt(0).toUpperCase() + src.slice(1);
+  }
+  const ref = (order.referring_site || '').toLowerCase();
+  if (!ref) return 'Direct / Other';
+  if (ref.includes('google')) return 'Google (organic/referral)';
+  if (ref.includes('facebook.com') || ref.includes('instagram.com') || ref.includes('fb.com')) return 'Meta (organic/referral)';
+  if (ref.includes('tiktok')) return 'TikTok (organic/referral)';
+  return 'Other referral';
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,7 +81,6 @@ export default async function handler(req, res) {
     'Content-Type': 'application/json',
   };
 
-  // Convert preset or custom range to Shopify date params
   const getDateRange = () => {
     if (since && until) return { min: since, max: until };
     const now = new Date();
@@ -47,7 +97,6 @@ export default async function handler(req, res) {
     return presets[preset] || presets['last_30d'];
   };
 
-  // Test endpoint - tries both auth methods
   if (action === 'test') {
     const url = `${baseUrl}/shop.json`;
     try {
@@ -71,8 +120,11 @@ export default async function handler(req, res) {
     // SALES SUMMARY for selected date range
     if (action === 'summary') {
       const { min, max } = getDateRange();
-      const r = await fetch(`${baseUrl}/orders.json?status=any&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=id,total_price,financial_status`, { headers });
-      const data = await r.json();
+      const data = await fetchAllShopify(
+        `${baseUrl}/orders.json?status=any&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=id,total_price,financial_status`,
+        headers, 'orders'
+      );
+      if (data.error) return res.status(500).json({ error: data.error });
 
       const summarize = (orders) => {
         const paid = (orders || []).filter(o => o.financial_status === 'paid');
@@ -84,17 +136,17 @@ export default async function handler(req, res) {
         };
       };
 
-      return res.status(200).json({
-        period: summarize(data.orders),
-        dateRange: { min, max },
-      });
+      return res.status(200).json({ period: summarize(data.orders), dateRange: { min, max } });
     }
 
     // TOP SELLING PRODUCTS for selected date range
     if (action === 'products') {
       const { min, max } = getDateRange();
-      const r = await fetch(`${baseUrl}/orders.json?status=any&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=line_items`, { headers });
-      const data = await r.json();
+      const data = await fetchAllShopify(
+        `${baseUrl}/orders.json?status=any&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=line_items`,
+        headers, 'orders'
+      );
+      if (data.error) return res.status(500).json({ error: data.error });
 
       const productMap = {};
       (data.orders || []).forEach(order => {
@@ -111,20 +163,17 @@ export default async function handler(req, res) {
 
     // ALL PRODUCTS with inventory
     if (action === 'inventory') {
-      const r = await fetch(`${baseUrl}/products.json?limit=250&fields=id,title,status,variants`, { headers });
-      const data = await r.json();
+      const data = await fetchAllShopify(`${baseUrl}/products.json?limit=250&fields=id,title,status,variants`, headers, 'products');
+      if (data.error) return res.status(500).json({ error: data.error });
       const products = (data.products || []).map(p => ({
         id: p.id,
         title: p.title,
         status: p.status,
         variants: (p.variants || []).map(v => ({
-          id: v.id,
-          title: v.title,
-          price: v.price,
-          inventory_quantity: v.inventory_quantity,
-          sku: v.sku,
+          id: v.id, title: v.title, price: v.price, inventory_quantity: v.inventory_quantity, sku: v.sku,
         })),
         totalInventory: (p.variants || []).reduce((sum, v) => sum + (v.inventory_quantity || 0), 0),
+        oversold: (p.variants || []).some(v => (v.inventory_quantity || 0) < 0),
       }));
       return res.status(200).json({ products });
     }
@@ -135,8 +184,11 @@ export default async function handler(req, res) {
       const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-      const r = await fetch(`${baseUrl}/customers.json?limit=250&fields=id,email,phone,first_name,last_name,orders_count,total_spent,created_at,updated_at`, { headers });
-      const data = await r.json();
+      const data = await fetchAllShopify(
+        `${baseUrl}/customers.json?limit=250&fields=id,email,phone,first_name,last_name,orders_count,total_spent,created_at,updated_at`,
+        headers, 'customers'
+      );
+      if (data.error) return res.status(500).json({ error: data.error });
       const all = data.customers || [];
 
       const segments = {
@@ -150,15 +202,36 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         counts: {
-          all: segments.all.length,
-          recent: segments.recent.length,
-          highValue: segments.highValue.length,
-          lapsed: segments.lapsed.length,
-          oneTime: segments.oneTime.length,
-          repeat: segments.repeat.length,
+          all: segments.all.length, recent: segments.recent.length, highValue: segments.highValue.length,
+          lapsed: segments.lapsed.length, oneTime: segments.oneTime.length, repeat: segments.repeat.length,
         },
         customers: segments[segment] || segments.all,
       });
+    }
+
+    // CHANNEL ATTRIBUTION — real Shopify order data, no GA needed for v1.
+    // Buckets paid revenue by traffic driver so the Command Center can show
+    // "sales from each channel" grounded in actual purchases, not
+    // platform-self-reported (inflated) conversion value.
+    if (action === 'channelAttribution') {
+      const { min, max } = getDateRange();
+      const data = await fetchAllShopify(
+        `${baseUrl}/orders.json?status=any&financial_status=paid&created_at_min=${min}T00:00:00Z&created_at_max=${max}T23:59:59Z&limit=250&fields=id,total_price,referring_site,landing_site,source_name`,
+        headers, 'orders'
+      );
+      if (data.error) return res.status(500).json({ error: data.error });
+
+      const byChannel = {};
+      (data.orders || []).forEach(o => {
+        const ch = classifyChannel(o);
+        if (!byChannel[ch]) byChannel[ch] = { channel: ch, orders: 0, revenue: 0 };
+        byChannel[ch].orders += 1;
+        byChannel[ch].revenue += parseFloat(o.total_price || 0);
+      });
+
+      const channels = Object.values(byChannel).sort((a, b) => b.revenue - a.revenue);
+      const totalRevenue = channels.reduce((s, c) => s + c.revenue, 0);
+      return res.status(200).json({ channels, totalRevenue, dateRange: { min, max }, note: 'Classified from Shopify order referring_site / landing_site UTM params — not Google Analytics. Direct/Other usually includes app-based checkouts (Instagram/TikTok in-app) that strip referrer data.' });
     }
 
     return res.status(400).json({ error: 'Unknown action' });
