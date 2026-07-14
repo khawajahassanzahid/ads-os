@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import Dashboard from "./Dashboard";
-import ChannelMatrix from "./ChannelMatrix";
+import HomeView from "./HomeView";
+import ChannelView from "./ChannelView";
 import CommandCenter from "./CommandCenter";
 import { CURRENCIES, getCurrencySymbol } from "./currency.js";
+import { CHANNELS, isChannelConnected } from "./channels.js";
 
 // ─── STORAGE HELPERS (localStorage) ─────────────────────────────────────────
 function lsGet(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } }
@@ -258,7 +260,7 @@ export default function AdsOS() {
     setActiveChat(null); setMessages([]);
     setActiveBlueprint(b[0] || null);
     setAuditResult(null);
-    setBrandTab("dashboard");
+    setBrandTab("home");
     setAppView("brand");
     refreshChannelStatus();
   };
@@ -424,18 +426,35 @@ export default function AdsOS() {
 
             {activeBrand && (
               <div style={{ borderTop:"1px solid #eee", paddingTop:10, marginTop:4, marginBottom:6 }}>
+                <button style={S.navBtn(brandTab === "home")} className={brandTab === "home" ? "" : "hov-bg"} onClick={() => setBrandTab("home")}>
+                  <span>Home</span><span />
+                </button>
+                {CHANNELS.map(c => {
+                  const conn = isChannelConnected(c.id, channelStatus[activeBrand.id]);
+                  return (
+                    <button key={c.id} style={S.navBtn(brandTab === c.id)} className={brandTab === c.id ? "" : "hov-bg"} onClick={() => setBrandTab(c.id)}>
+                      <span>{c.label}</span>
+                      <span style={{ width:7, height:7, borderRadius:"50%", flexShrink:0, background: conn ? "#3a7d44" : "#ccc" }} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeBrand && (
+              <div style={{ borderTop:"1px solid #eee", paddingTop:10, marginTop:4, marginBottom:6 }}>
+                <div style={{ fontSize:10, fontWeight:700, letterSpacing:"0.1em", color:"#999999", marginBottom:6, textTransform:"uppercase" }}>Tools</div>
                 {[
-                  ["overview", "Home", null],
-                  ["command", "Command Center", null],
-                  ["meta", "Meta Ads", channelStatus[activeBrand.id]?.meta?.connected],
-                  ["dashboard", "Dashboard", null],
-                  ["chat", "Chat", null],
-                  ["blueprint", "Blueprint", null],
-                  ["audit", "Audit", null],
-                ].map(([id, label, dot]) => (
+                  ["command", "Command Center"],
+                  ["dashboard", "Dashboard"],
+                  ["setup", "Brand Setup"],
+                  ["metaLive", "Meta Live (legacy)"],
+                  ["chat", "Chat"],
+                  ["blueprint", "Blueprint"],
+                  ["audit", "Audit"],
+                ].map(([id, label]) => (
                   <button key={id} style={S.navBtn(brandTab === id)} className={brandTab === id ? "" : "hov-bg"} onClick={() => setBrandTab(id)}>
-                    <span>{label}</span>
-                    {dot !== null && <span style={{ width:7, height:7, borderRadius:"50%", flexShrink:0, background: dot ? "#3a7d44" : "#ccc" }} />}
+                    <span>{label}</span><span />
                   </button>
                 ))}
               </div>
@@ -508,13 +527,17 @@ export default function AdsOS() {
               {/* COMMAND CENTER */}
               {brandTab === "command" && <CommandCenter bc={bc} activeBrand={activeBrand} channelStatus={channelStatus[activeBrand.id]} />}
 
-              {/* OVERVIEW */}
-              {brandTab === "overview" && (
+              {/* HOME */}
+              {brandTab === "home" && <HomeView activeBrand={activeBrand} channelStatus={channelStatus[activeBrand.id]} onOpenChannel={(id) => setBrandTab(id)} />}
+
+              {/* CHANNEL DRILL-DOWN — Meta Ads / Google Ads / Merchant Center / YouTube / Organic SEO /
+                  AI SEO / Email & SMS / Shopify / Organic Social / Affiliate */}
+              {CHANNELS.some(c => c.id === brandTab) && <ChannelView channelId={brandTab} activeBrand={activeBrand} channelStatus={channelStatus[activeBrand.id]} />}
+
+              {/* BRAND SETUP (was "Overview") — account status cards, quick actions, blueprint CTA, recent chats */}
+              {brandTab === "setup" && (
                 <div style={{ flex:1, overflowY:"auto", padding:"24px 24px" }}>
                   <div style={{ maxWidth:800, margin:"0 auto" }} className="fade-up">
-
-                    {/* CHANNEL CONNECTION MATRIX */}
-                    <ChannelMatrix cs={channelStatus[activeBrand.id]} bc={bc} onOpenCommandCenter={() => setBrandTab("command")} />
 
                     <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
                       <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit Brand</button>
@@ -590,8 +613,8 @@ export default function AdsOS() {
                 </div>
               )}
 
-              {/* CHAT */}
-              {brandTab === "meta" && (
+              {/* META LIVE (legacy manual-refresh view, kept under Tools) */}
+              {brandTab === "metaLive" && (
                 <div style={{ flex:1, overflowY:"auto", padding:"20px" }}>
                   <div style={{ maxWidth:880, margin:"0 auto" }} className="fade-up">
                     <div style={{ ...S.card, background:`${bc}08`, border:`1px solid ${bc}30`, marginBottom:20, display:"flex", alignItems:"center", gap:16 }}>
