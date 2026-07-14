@@ -345,12 +345,14 @@ export default function AdsOS() {
   });
 
   const S = {
-    app: { minHeight:"100vh", background:"#f7f7f5", color:"#1a1a1a", fontFamily:"'Syne','Helvetica Neue',sans-serif", display:"flex", flexDirection:"column", overflow:"hidden" },
+    app: { minHeight:"100vh", background:"#f7f7f5", color:"#1a1a1a", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif", display:"flex", flexDirection:"column", overflow:"hidden" },
     topbar: { height:52, background:"#f7f7f5", borderBottom:"1px solid #e5e3de", display:"flex", alignItems:"center", padding:"0 16px", gap:10, flexShrink:0, zIndex:20 },
-    sidebar: { width: sidebarOpen ? 248 : 0, background:"#ffffff", borderRight:"1px solid #e5e3de", display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease", flexShrink:0 },
+    main: { flex:1, display:"flex", minHeight:0, overflow:"hidden" },
+    sidebar: { width: sidebarOpen ? 230 : 0, background:"#ffffff", borderRight:"1px solid #e5e3de", display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease", flexShrink:0 },
     content: { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" },
     card: { background:"#ffffff", border:"1px solid #e5e3de", borderRadius:14, padding:"16px 18px" },
     input: { background:"#ffffff", border:"1px solid #dddddd", borderRadius:10, padding:"9px 13px", color:"#1a1a1a", fontSize:13, outline:"none", width:"100%", fontFamily:"inherit" },
+    navBtn: (active) => ({ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"9px 10px", marginBottom:2, border:"none", background: active ? "#1a1a1a" : "none", borderRadius:6, fontSize:12.6, color: active ? "#fff" : "#444", fontWeight: active ? 600 : 400, cursor:"pointer", fontFamily:"inherit", transition:"background 0.15s" }),
     tab: (active) => ({ padding:"8px 16px", borderRadius:"8px 8px 0 0", fontSize:12, fontWeight:700, letterSpacing:"0.03em", border:"none", cursor:"pointer", fontFamily:"inherit", background: active ? "#f0efe9" : "transparent", color: active ? bc : "#999999", borderBottom: active ? `2px solid ${bc}` : "2px solid transparent", transition:"all 0.15s" }),
     btn: (color, ghost) => ({ background: ghost ? "transparent" : (color || bc), border: `1px solid ${ghost ? "#dddddd" : (color || bc)}`, borderRadius:10, padding:"9px 18px", color: ghost ? "#6b6b6b" : "#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:7, transition:"all 0.15s", whiteSpace:"nowrap" }),
     iconBtn: { background:"transparent", border:"none", cursor:"pointer", color:"#6b6b6b", padding:6, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" },
@@ -358,7 +360,7 @@ export default function AdsOS() {
 
   if (appView === "loading") return (
     <div style={{ ...S.app, alignItems:"center", justifyContent:"center" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap'); @keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <Spinner size={32} color="#0082FB" />
     </div>
   );
@@ -366,10 +368,9 @@ export default function AdsOS() {
   return (
     <div style={S.app}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#dddddd;border-radius:2px}
-        textarea,input{font-family:'Syne','Helvetica Neue',sans-serif} textarea{resize:none}
+        textarea,input{font-family:inherit} textarea{resize:none}
         textarea::placeholder,input::placeholder{color:#999999}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -382,7 +383,7 @@ export default function AdsOS() {
         .del:opacity{0} .chat-row:hover .del{opacity:1!important}
         input:focus,textarea:focus{border-color:#999999!important;outline:none}
         .modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
-        .notif{position:fixed;bottom:24px;right:24px;z-index:300;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;font-family:'Syne',sans-serif;animation:slideIn 0.3s ease;pointer-events:none}
+        .notif{position:fixed;bottom:24px;right:24px;z-index:300;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;font-family:inherit;animation:slideIn 0.3s ease;pointer-events:none}
       `}</style>
 
       {/* NOTIFICATION */}
@@ -392,24 +393,16 @@ export default function AdsOS() {
         </div>
       )}
 
-      {/* TOPBAR */}
-      <div style={S.topbar}>
-        <button style={S.iconBtn} onClick={() => setSidebarOpen(v => !v)}>
-          <svg width="18" height="14" fill="none"><rect width="18" height="2" rx="1" fill="currentColor"/><rect y="6" width="18" height="2" rx="1" fill="currentColor"/><rect y="12" width="18" height="2" rx="1" fill="currentColor"/></svg>
-        </button>
-        <div style={{ width:28, height:28, borderRadius:8, background:`linear-gradient(135deg,${bc},${bc}99)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, transition:"all 0.3s" }}>⚡</div>
-        <span style={{ fontWeight:800, fontSize:15, letterSpacing:"-0.02em", flex:1 }}>
-          {activeBrand ? activeBrand.name : "Ads OS"}
-          {activeBrand && <span style={{ fontSize:11, color:"#999999", marginLeft:8 }}>{activeBrand.industry || "Paid Media"}</span>}
-        </span>
-        {activeBrand && (
-          <div style={{ display:"flex", gap:6 }}>
-            <button style={S.btn(bc, true)} className="hov" onClick={() => setBrandTab("blueprint")}>🗺 Blueprint</button>
-            <button style={S.btn(bc)} className="hov" onClick={() => startChat()}>+ Chat</button>
-          </div>
-        )}
-        {!activeBrand && <button style={S.btn("#0082FB")} className="hov" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }}>+ Brand</button>}
-      </div>
+      {/* TOPBAR — only shown on the brand-picker screen; once a brand is open, its
+          name/context lives at the top of the main content instead, and all
+          navigation lives in the sidebar (matching the Growth Ops Console). */}
+      {appView === "home" && (
+        <div style={S.topbar}>
+          <div style={{ width:28, height:28, borderRadius:8, background:`linear-gradient(135deg,${bc},${bc}99)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>⚡</div>
+          <span style={{ fontWeight:800, fontSize:15, letterSpacing:"-0.02em", flex:1 }}>Ads OS</span>
+          <button style={S.btn("#0082FB")} className="hov" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }}>+ Brand</button>
+        </div>
+      )}
 
       <div style={S.main}>
         {/* SIDEBAR */}
@@ -428,6 +421,25 @@ export default function AdsOS() {
               <div style={{ width:7, height:7, borderRadius:"50%", border:"1px dashed #999999", flexShrink:0 }} />
               <span style={{ fontSize:12, color:"#999999" }}>Add brand…</span>
             </div>
+
+            {activeBrand && (
+              <div style={{ borderTop:"1px solid #eee", paddingTop:10, marginTop:4, marginBottom:6 }}>
+                {[
+                  ["overview", "Home", null],
+                  ["command", "Command Center", null],
+                  ["meta", "Meta Ads", channelStatus[activeBrand.id]?.meta?.connected],
+                  ["dashboard", "Dashboard", null],
+                  ["chat", "Chat", null],
+                  ["blueprint", "Blueprint", null],
+                  ["audit", "Audit", null],
+                ].map(([id, label, dot]) => (
+                  <button key={id} style={S.navBtn(brandTab === id)} className={brandTab === id ? "" : "hov-bg"} onClick={() => setBrandTab(id)}>
+                    <span>{label}</span>
+                    {dot !== null && <span style={{ width:7, height:7, borderRadius:"50%", flexShrink:0, background: dot ? "#3a7d44" : "#ccc" }} />}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {activeBrand && chats.length > 0 && (
               <>
@@ -478,11 +490,16 @@ export default function AdsOS() {
           {/* BRAND WORKSPACE */}
           {appView === "brand" && activeBrand && (
             <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-              {/* Tabs */}
-              <div style={{ borderBottom:"2px solid #e5e3de", padding:"0 20px", display:"flex", gap:4, background:"#f7f7f5", flexShrink:0 }}>
-                {[["overview","🏠 Overview"],["command","🎯 Command Center"],["dashboard","⚡ Dashboard"],["meta","📊 Meta Live"],["chat","💬 Chat"],["blueprint","🗺 Blueprint"],["audit","🔍 Audit"]].map(([id,label]) => (
-                  <button key={id} style={S.tab(brandTab===id)} onClick={() => setBrandTab(id)}>{label}</button>
-                ))}
+              {/* Brand context header — replaces the old topbar once a brand is open */}
+              <div style={{ padding:"16px 24px 0", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div>
+                  <h1 style={{ fontSize:19, margin:"0 0 2px", fontWeight:700, color:"#1a1a1a" }}>{activeBrand.name}</h1>
+                  <div style={{ fontSize:12.5, color:"#6b6b6b" }}>{activeBrand.industry || "Paid Media"}{activeBrand.website ? ` · ${activeBrand.website}` : ""}</div>
+                </div>
+                <div style={{ display:"flex", gap:6 }}>
+                  <button style={S.btn(bc, true)} className="hov" onClick={() => setBrandTab("blueprint")}>🗺 Blueprint</button>
+                  <button style={S.btn(bc)} className="hov" onClick={() => startChat()}>+ Chat</button>
+                </div>
               </div>
 
               {/* DASHBOARD */}
@@ -499,15 +516,8 @@ export default function AdsOS() {
                     {/* CHANNEL CONNECTION MATRIX */}
                     <ChannelMatrix cs={channelStatus[activeBrand.id]} bc={bc} onOpenCommandCenter={() => setBrandTab("command")} />
 
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                        <div style={{ width:48, height:48, borderRadius:14, background:`${bc}20`, border:`2px solid ${bc}40`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:800, color:bc }}>{activeBrand.name[0]}</div>
-                        <div>
-                          <h2 style={{ fontWeight:800, fontSize:20, letterSpacing:"-0.02em" }}>{activeBrand.name}</h2>
-                          <div style={{ fontSize:12, color:"#999999", marginTop:2 }}>{activeBrand.industry||"Paid Media"}{activeBrand.website ? ` · ${activeBrand.website}` : ""}</div>
-                        </div>
-                      </div>
-                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit</button>
+                    <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
+                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit Brand</button>
                     </div>
 
                     {/* Account status cards */}
