@@ -20,6 +20,13 @@ export const CHANNELS = [
       "Each asset group has 3+ images and 3+ headlines minimum for full delivery",
       "Enhanced conversions / offline conversion import configured for tracking accuracy",
     ] },
+  { id: "ga4", label: "Google Analytics (GA4)", liveCapable: true, impact: "Cross-channel source of truth for sessions, conversions, and revenue by traffic driver — Google's own attribution model, not self-reported by each ad platform.",
+    bestPractices: [
+      "Enhanced measurement + conversion events configured (purchase, add_to_cart at minimum)",
+      "Cross-domain tracking set up if checkout runs on a different domain/subdomain than the storefront",
+      "Data-driven attribution (GA4 default) reviewed periodically against platform-reported ROAS to quantify the over-reporting gap",
+      "Google Ads linked directly to GA4 for closed-loop conversion data, not just pageview tracking",
+    ] },
   { id: "merchantCenter", label: "Google Shopping / Merchant Center", liveCapable: false, impact: "Feed-driven — if this isn't clean, your products are invisible on Shopping tab and PMax underperforms regardless of ad spend.",
     bestPractices: [
       "100% product feed approval rate — zero unresolved disapprovals",
@@ -35,7 +42,7 @@ export const CHANNELS = [
       "View-through conversion tracking enabled and monitored separately from click conversions",
       "Custom intent / in-market audiences layered on top of demographic targeting",
     ] },
-  { id: "searchConsole", label: "Organic SEO", liveCapable: false, impact: "Compounding, free traffic — the channel most brands under-invest in relative to its long-term ROI.",
+  { id: "searchConsole", label: "Organic SEO", liveCapable: true, impact: "Compounding, free traffic — the channel most brands under-invest in relative to its long-term ROI.",
     bestPractices: [
       "Core Web Vitals passing on mobile for top landing pages",
       "XML sitemap submitted with a 90%+ indexed rate",
@@ -81,8 +88,8 @@ export const CHANNELS = [
 ];
 
 export function isChannelConnected(channelId, channelStatus) {
-  if (channelId === "meta") return !!channelStatus?.meta?.connected;
-  if (channelId === "google") return !!channelStatus?.google?.connected;
-  if (channelId === "shopify") return !!channelStatus?.shopify?.connected;
-  return false; // the other 7 channels have no integration built yet
+  if (["meta", "google", "shopify", "ga4", "searchConsole"].includes(channelId)) {
+    return !!channelStatus?.[channelId]?.connected;
+  }
+  return false; // the remaining channels have no integration built yet
 }

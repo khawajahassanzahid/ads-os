@@ -126,6 +126,38 @@ export default async function handler(req, res) {
         return res.status(200).send(successPage(brand, 'Google Ads', `<p>Customer ID: ${customerId}</p>`));
       }
 
+      // Search Console and GA4 share the same token-exchange shape as Google
+      // Ads above — only the scope requested in step 1 differs, and each
+      // gets its own row in the credentials table (platform: 'searchConsole'
+      // / 'ga4') so a brand can have Ads connected without necessarily
+      // having these, or vice versa.
+      if (platform === 'searchConsole' || platform === 'ga4') {
+        const { siteUrl, propertyId } = parsed;
+        const r = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: REDIRECT_URI,
+            grant_type: 'authorization_code',
+          }),
+        });
+        const data = await r.json();
+        if (!data.refresh_token && !data.access_token) return res.status(400).send(errorPage(JSON.stringify(data)));
+
+        const accountId = platform === 'searchConsole' ? siteUrl : propertyId;
+        await upsertCredential(brand, platform, {
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+          accountId,
+          expiresAt: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : null,
+        });
+        const label = platform === 'searchConsole' ? 'Search Console' : 'Google Analytics (GA4)';
+        return res.status(200).send(successPage(brand, label, `<p>${platform === 'searchConsole' ? 'Site' : 'Property'}: ${accountId}</p>`));
+      }
+
       return res.status(400).send(errorPage(`Unknown platform: ${platform}`));
     } catch (err) {
       return res.status(500).send(errorPage(err.message));
@@ -133,11 +165,11 @@ export default async function handler(req, res) {
   }
 
   // ---- Step 1: kick off the provider's OAuth dialog ----
-  const { platform, brand, shop, accountId, customerId, loginCustomerId, brandName } = req.query;
+  const { platform, brand, shop, accountId, customerId, loginCustomerId, brandName, siteUrl, propertyId } = req.query;
   if (!platform || !brand) {
     return res.status(400).send(errorPage('Missing required ?platform= and ?brand= query params'));
   }
-  const newState = encodeState({ platform, brand, shop, accountId, customerId, loginCustomerId, brandName });
+  const newState = encodeState({ platform, brand, shop, accountId, customerId, loginCustomerId, brandName, siteUrl, propertyId });
 
   if (platform === 'shopify') {
     if (!shop) return res.status(400).send(errorPage('Missing ?shop=yourstore.myshopify.com'));
@@ -171,6 +203,34 @@ export default async function handler(req, res) {
       scope: 'https://www.googleapis.com/auth/adwords',
       access_type: 'offline',
       prompt: 'consent', // forces a refresh_token every time, otherwise Google only sends it on the very first consent
+      state: newState,
+    });
+    return res.redirect(authUrl);
+  }
+
+  if (platform === 'searchConsole') {
+    if (!siteUrl) return res.status(400).send(errorPage('Missing ?siteUrl= (e.g. sc-domain:julke.pk or https://julke.pk/)'));
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      access_type: 'offline',
+      prompt: 'consent',
+      state: newState,
+    });
+    return res.redirect(authUrl);
+  }
+
+  if (platform === 'ga4') {
+    if (!propertyId) return res.status(400).send(errorPage('Missing ?propertyId=XXXXXXXXX (numeric GA4 property id)'));
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/analytics.readonly',
+      access_type: 'offline',
+      prompt: 'consent',
       state: newState,
     });
     return res.redirect(authUrl);

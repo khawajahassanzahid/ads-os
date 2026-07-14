@@ -194,6 +194,71 @@ function ShopifyChannel({ activeBrand }) {
   );
 }
 
+function SearchConsoleChannel({ activeBrand }) {
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    fetch(`/api/searchconsole?action=queries&preset=last_28d&brand=${activeBrand.id}`).then(r => r.json()).then(res => {
+      if (res.error) throw new Error(res.error.message || JSON.stringify(res.error));
+      setRows(res.rows || []);
+    }).catch(e => setErr(e.message));
+  }, [activeBrand.id]);
+
+  if (err) return <Panel title="Top Queries (last 28 days)"><ErrBox msg={err} /></Panel>;
+  if (!rows) return <Panel title="Top Queries (last 28 days)"><Loading /></Panel>;
+  if (!rows.length) return <Panel title="Top Queries (last 28 days)"><Loading text="No query data in this window yet." /></Panel>;
+
+  return (
+    <Panel title="Top Queries (last 28 days)">
+      <Table cols={["Query", "Clicks", "Impressions", "CTR", "Avg. Position"]} rows={rows.map(r => (
+        <tr key={r.key}>
+          <td style={td}>{r.key}</td>
+          <td style={td}>{fmtNum(r.clicks)}</td>
+          <td style={td}>{fmtNum(r.impressions)}</td>
+          <td style={td}>{r.ctr.toFixed(2)}%</td>
+          <td style={td}>{r.position.toFixed(1)}</td>
+        </tr>
+      ))} />
+    </Panel>
+  );
+}
+
+function Ga4Channel({ activeBrand }) {
+  const [rows, setRows] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    fetch(`/api/ga4?action=channels&preset=last_28d&brand=${activeBrand.id}`).then(r => r.json()).then(res => {
+      if (res.error) throw new Error(res.error.message || JSON.stringify(res.error));
+      setRows(res.rows || []);
+    }).catch(e => setErr(e.message));
+  }, [activeBrand.id]);
+
+  if (err) return <Panel title="Sessions & Revenue by Channel (last 28 days)"><ErrBox msg={err} /></Panel>;
+  if (!rows) return <Panel title="Sessions & Revenue by Channel (last 28 days)"><Loading /></Panel>;
+  if (!rows.length) return <Panel title="Sessions & Revenue by Channel (last 28 days)"><Loading text="No session data in this window yet." /></Panel>;
+
+  const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+
+  return (
+    <Panel title="Sessions & Revenue by Channel (last 28 days)">
+      {rows.map(r => {
+        const pct = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0;
+        return (
+          <div key={r.channel} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
+              <span style={{ color: "#444" }}>{r.channel}</span>
+              <span style={{ fontWeight: 600 }}>{fmtMoney(r.revenue, activeBrand.currency)} · {fmtNum(r.sessions)} sessions · {fmtNum(r.conversions)} conv.</span>
+            </div>
+            <div style={{ height: 6, background: "#eee", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: pct + "%", background: "#256b2e", borderRadius: 3 }} />
+            </div>
+          </div>
+        );
+      })}
+    </Panel>
+  );
+}
+
 export default function ChannelView({ channelId, activeBrand, channelStatus }) {
   const c = CHANNELS.find(x => x.id === channelId);
   if (!c) return null;
@@ -203,6 +268,8 @@ export default function ChannelView({ channelId, activeBrand, channelStatus }) {
     meta: activeBrand.metaAccountId && `/api/oauth?platform=meta&brand=${activeBrand.id}&accountId=${activeBrand.metaAccountId}&brandName=${encodeURIComponent(activeBrand.name)}`,
     google: activeBrand.googleAccountId && `/api/oauth?platform=google&brand=${activeBrand.id}&customerId=${activeBrand.googleAccountId}&brandName=${encodeURIComponent(activeBrand.name)}`,
     shopify: activeBrand.shopifyDomain && `/api/oauth?platform=shopify&brand=${activeBrand.id}&shop=${activeBrand.shopifyDomain}&brandName=${encodeURIComponent(activeBrand.name)}`,
+    searchConsole: activeBrand.searchConsoleSiteUrl && `/api/oauth?platform=searchConsole&brand=${activeBrand.id}&siteUrl=${encodeURIComponent(activeBrand.searchConsoleSiteUrl)}&brandName=${encodeURIComponent(activeBrand.name)}`,
+    ga4: activeBrand.ga4PropertyId && `/api/oauth?platform=ga4&brand=${activeBrand.id}&propertyId=${activeBrand.ga4PropertyId}&brandName=${encodeURIComponent(activeBrand.name)}`,
   };
 
   return (
@@ -226,6 +293,8 @@ export default function ChannelView({ channelId, activeBrand, channelStatus }) {
             {channelId === "meta" && <MetaChannel activeBrand={activeBrand} />}
             {channelId === "google" && <GoogleChannel activeBrand={activeBrand} />}
             {channelId === "shopify" && <ShopifyChannel activeBrand={activeBrand} />}
+            {channelId === "searchConsole" && <SearchConsoleChannel activeBrand={activeBrand} />}
+            {channelId === "ga4" && <Ga4Channel activeBrand={activeBrand} />}
             <BestPractices items={c.bestPractices} />
           </>
         )}

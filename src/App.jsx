@@ -202,7 +202,7 @@ export default function AdsOS() {
   const [showBrandModal, setShowBrandModal] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [brandForm, setBrandForm] = useState({ name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB" });
+  const [brandForm, setBrandForm] = useState({ name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",searchConsoleSiteUrl:"",ga4PropertyId:"",notes:"",color:"#0082FB" });
   const [bpGoal, setBpGoal] = useState("");
   const [notification, setNotification] = useState(null);
   const messagesEnd = useRef(null);
@@ -273,7 +273,7 @@ export default function AdsOS() {
     setBrands(prev => editingBrand ? prev.map(b => b.id === brand.id ? brand : b) : [...prev, brand]);
     if (activeBrand?.id === brand.id) setActiveBrand(brand);
     setShowBrandModal(false); setEditingBrand(null);
-    setBrandForm({ name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB" });
+    setBrandForm({ name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",searchConsoleSiteUrl:"",ga4PropertyId:"",notes:"",color:"#0082FB" });
     notify(`${brand.name} saved`);
     refreshChannelStatus();
   };
@@ -404,7 +404,7 @@ export default function AdsOS() {
         <div style={S.topbar}>
           <div style={{ width:28, height:28, borderRadius:8, background:`linear-gradient(135deg,${bc},${bc}99)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14 }}>⚡</div>
           <span style={{ fontWeight:800, fontSize:15, letterSpacing:"-0.02em", flex:1 }}>Ads OS</span>
-          <button style={S.btn("#0082FB")} className="hov" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }}>+ Brand</button>
+          <button style={S.btn("#0082FB")} className="hov" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",searchConsoleSiteUrl:"",ga4PropertyId:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }}>+ Brand</button>
         </div>
       )}
 
@@ -421,7 +421,7 @@ export default function AdsOS() {
               <option value="" disabled>{brands.length ? "Select a brand…" : "No brands yet"}</option>
               {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
-            <div className="hov-bg" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ display:"flex", alignItems:"center", gap:9, padding:"7px 9px", borderRadius:9, cursor:"pointer", marginBottom:6 }}>
+            <div className="hov-bg" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",searchConsoleSiteUrl:"",ga4PropertyId:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ display:"flex", alignItems:"center", gap:9, padding:"7px 9px", borderRadius:9, cursor:"pointer", marginBottom:6 }}>
               <div style={{ width:7, height:7, borderRadius:"50%", border:"1px dashed #999999", flexShrink:0 }} />
               <span style={{ fontSize:12, color:"#999999" }}>Add brand…</span>
             </div>
@@ -501,7 +501,7 @@ export default function AdsOS() {
                         {b.monthlyBudget && <div style={{ fontSize:11, color:b.color||"#0082FB", marginTop:5 }}>{getCurrencySymbol(b.currency)}{Number(b.monthlyBudget).toLocaleString()}/mo</div>}
                       </div>
                     ))}
-                    <div className="hov-card" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ ...S.card, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#999999", fontSize:13, transition:"all 0.2s", border:"1px dashed #dddddd", background:"transparent" }}>+ Add Brand</div>
+                    <div className="hov-card" onClick={() => { setEditingBrand(null); setBrandForm({name:"",industry:"",website:"",monthlyBudget:"",monthlyTarget:"",currency:"USD",goals:"",metaAccountId:"",googleAccountId:"",shopifyDomain:"",searchConsoleSiteUrl:"",ga4PropertyId:"",notes:"",color:"#0082FB"}); setShowBrandModal(true); }} style={{ ...S.card, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", color:"#999999", fontSize:13, transition:"all 0.2s", border:"1px dashed #dddddd", background:"transparent" }}>+ Add Brand</div>
                   </div>
                 )}
               </div>
@@ -542,7 +542,7 @@ export default function AdsOS() {
                   <div style={{ maxWidth:800, margin:"0 auto" }} className="fade-up">
 
                     <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:16 }}>
-                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit Brand</button>
+                      <button style={S.btn(bc, true)} className="hov" onClick={() => { setEditingBrand(activeBrand); setBrandForm({name:activeBrand.name, industry:activeBrand.industry||"", website:activeBrand.website||"", monthlyBudget:activeBrand.monthlyBudget||"", monthlyTarget:activeBrand.monthlyTarget||"", currency:activeBrand.currency||"USD", goals:activeBrand.goals||"", metaAccountId:activeBrand.metaAccountId||"", googleAccountId:activeBrand.googleAccountId||"", shopifyDomain:activeBrand.shopifyDomain||"", searchConsoleSiteUrl:activeBrand.searchConsoleSiteUrl||"", ga4PropertyId:activeBrand.ga4PropertyId||"", notes:activeBrand.notes||"", color:activeBrand.color||"#0082FB"}); setShowBrandModal(true); }}>Edit Brand</button>
                     </div>
 
                     {/* Account status cards */}
@@ -1069,6 +1069,10 @@ export default function AdsOS() {
                   <div><label style={{ fontSize:10, color:"#999999", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Google Account ID</label><input style={S.input} value={brandForm.googleAccountId} onChange={e => setBrandForm(p=>({...p,googleAccountId:e.target.value}))} placeholder="123-456-7890 (no dashes)" /></div>
                 </div>
                 <div><label style={{ fontSize:10, color:"#999999", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Shopify Store Domain</label><input style={S.input} value={brandForm.shopifyDomain} onChange={e => setBrandForm(p=>({...p,shopifyDomain:e.target.value}))} placeholder="yourstore.myshopify.com" /></div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:10 }}>
+                  <div><label style={{ fontSize:10, color:"#999999", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Search Console Site URL</label><input style={S.input} value={brandForm.searchConsoleSiteUrl} onChange={e => setBrandForm(p=>({...p,searchConsoleSiteUrl:e.target.value}))} placeholder="sc-domain:julke.pk" /></div>
+                  <div><label style={{ fontSize:10, color:"#999999", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>GA4 Property ID</label><input style={S.input} value={brandForm.ga4PropertyId} onChange={e => setBrandForm(p=>({...p,ga4PropertyId:e.target.value}))} placeholder="123456789 (numeric only)" /></div>
+                </div>
               </div>
               <div><label style={{ fontSize:10, color:"#999999", letterSpacing:"0.06em", textTransform:"uppercase", display:"block", marginBottom:5 }}>Extra Context</label><textarea style={{ ...S.input, height:72 }} value={brandForm.notes} onChange={e => setBrandForm(p=>({...p,notes:e.target.value}))} placeholder="Target audience, key products, current challenges, competitors…" /></div>
               <div>
