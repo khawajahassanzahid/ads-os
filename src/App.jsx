@@ -54,7 +54,7 @@ Brand context:
 
 Always tailor advice to this brand's specific context and budget.`;
 
-const BLUEPRINT_SYSTEM = (brand) => `You are an elite paid media strategist building a complete campaign blueprint. You must return ONLY a valid JSON object — no markdown, no explanation, no preamble.
+const BLUEPRINT_SYSTEM = (brand) => `You are an elite paid media strategist building a complete campaign blueprint. You must return ONLY a valid JSON object — no markdown, no explanation, no preamble. Keep it compact: max 2 campaigns per platform, max 2 ad sets/ad groups per campaign, max 5 items in any array field (keywords, headlines, etc), and keep every string field to one short sentence. This must generate quickly, so brevity beats exhaustiveness.
 
 Brand:
 - Name: ${brand.name}
@@ -125,29 +125,32 @@ Build a complete, expert campaign blueprint. Return this exact JSON structure:
   }
 }`;
 
-const AUDIT_SYSTEM = (brand) => `You are an elite Meta & Google Ads auditor. Audit the provided campaign structure against best practices. Return ONLY valid JSON — no preamble.
+const AUDIT_SYSTEM = (brand) => `You are an elite Meta & Google Ads auditor. Audit the provided campaign structure against best practices. Return ONLY valid JSON — no preamble, no markdown fences.
 
 Brand: ${brand.name}, Industry: ${brand.industry || "General"}, Budget: ${getCurrencySymbol(brand.currency)}${brand.monthlyBudget || "unknown"} ${brand.currency||"USD"}/mo
+
+Return ONLY the 8 highest-impact checks per platform — prioritize what actually moves performance, skip minor items. Keep "detail" and "fix" to one short sentence each (under 15 words). This must stay compact enough to generate quickly, so brevity matters more than exhaustiveness.
 
 Return this exact JSON:
 {
   "score": number (0-100),
   "grade": "A/B/C/D/F",
-  "summary": "string",
+  "summary": "string (1 sentence)",
   "meta": {
     "checks": [
-      { "category": "string", "item": "string", "status": "PASS|WARN|FAIL", "detail": "string", "fix": "string" }
+      { "category": "string", "item": "string", "status": "PASS|WARN|FAIL", "detail": "string (short)", "fix": "string (short)" }
     ]
   },
   "google": {
     "checks": [
-      { "category": "string", "item": "string", "status": "PASS|WARN|FAIL", "detail": "string", "fix": "string" }
+      { "category": "string", "item": "string", "status": "PASS|WARN|FAIL", "detail": "string (short)", "fix": "string (short)" }
     ]
   },
   "topFixes": [
-    { "priority": number, "platform": "Meta|Google|Both", "action": "string", "expectedImpact": "string" }
+    { "priority": number, "platform": "Meta|Google|Both", "action": "string (short)", "expectedImpact": "string (short)" }
   ]
-}`;
+}
+Max 8 checks in "meta.checks", max 8 checks in "google.checks", max 5 items in "topFixes". Do not exceed these limits.`;
 
 // ─── QUICK PROMPTS ────────────────────────────────────────────────────────────
 const QUICK = [
@@ -311,7 +314,7 @@ export default function AdsOS() {
     setBpLoading(true); setBrandTab("blueprint");
     try {
       const prompt = bpGoal ? `Generate a campaign blueprint focused on: ${bpGoal}` : "Generate a complete campaign blueprint based on this brand's goals and budget.";
-      const raw = await askClaude(BLUEPRINT_SYSTEM(activeBrand), [{ role: "user", content: prompt }], 4096);
+      const raw = await askClaude(BLUEPRINT_SYSTEM(activeBrand), [{ role: "user", content: prompt }], 3000);
       const clean = raw.replace(/```json|```/g, "").trim();
       const bp = { id: uid(), brandId: activeBrand.id, data: JSON.parse(clean), goal: bpGoal || "Full campaign strategy", createdAt: Date.now() };
       await saveBlueprint(activeBrand.id, bp);
@@ -327,7 +330,7 @@ export default function AdsOS() {
     setAuditLoading(true); setBrandTab("audit"); setAuditResult(null);
     try {
       const context = activeBlueprint ? JSON.stringify(activeBlueprint.data).slice(0, 2000) : "No campaign structure provided — audit based on brand info only.";
-      const raw = await askClaude(AUDIT_SYSTEM(activeBrand), [{ role: "user", content: `Audit this campaign setup: ${context}` }], 4096);
+      const raw = await askClaude(AUDIT_SYSTEM(activeBrand), [{ role: "user", content: `Audit this campaign setup: ${context}` }], 2000);
       const clean = raw.replace(/```json|```/g, "").trim();
       setAuditResult(JSON.parse(clean));
       notify("Audit complete!");
@@ -899,7 +902,7 @@ export default function AdsOS() {
                     {auditLoading && (
                       <div style={{ textAlign:"center", padding:"48px 0" }}>
                         <Spinner color={bc} size={28} />
-                        <div style={{ marginTop:14, fontSize:13, color:"#2A3550" }}>Auditing against 40+ best-practice checks…</div>
+                        <div style={{ marginTop:14, fontSize:13, color:"#2A3550" }}>Auditing against Meta + Google best practices…</div>
                       </div>
                     )}
 
@@ -984,7 +987,7 @@ export default function AdsOS() {
                     {!auditResult && !auditLoading && (
                       <div style={{ textAlign:"center", padding:"40px 0", color:"#2A3550" }}>
                         <div style={{ fontSize:36, marginBottom:10 }}>🔍</div>
-                        <div style={{ fontSize:14 }}>Click "Run Audit" to check your setup against 40+ best-practice checks</div>
+                        <div style={{ fontSize:14 }}>Click "Run Audit" to check your setup against Meta + Google best practices</div>
                       </div>
                     )}
                   </div>
