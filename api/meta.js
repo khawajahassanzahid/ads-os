@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         ? `insights.time_range({"since":"${since}","until":"${until}"}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`
         : `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas}`;
       const data = await fetchAllPages(
-        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&effective_status[]=ACTIVE&effective_status[]=PAUSED&limit=250&access_token=${token}`
+        `${baseUrl}/${adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,${insightsField}&effective_status[]=ACTIVE&limit=250&access_token=${token}`
       );
       return res.status(200).json(data);
     }
