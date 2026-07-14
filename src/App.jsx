@@ -350,11 +350,12 @@ export default function AdsOS() {
     app: { minHeight:"100vh", background:"#f7f7f5", color:"#1a1a1a", fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif", display:"flex", flexDirection:"column", overflow:"hidden" },
     topbar: { height:52, background:"#f7f7f5", borderBottom:"1px solid #e5e3de", display:"flex", alignItems:"center", padding:"0 16px", gap:10, flexShrink:0, zIndex:20 },
     main: { flex:1, display:"flex", minHeight:0, overflow:"hidden" },
-    sidebar: { width: sidebarOpen ? 230 : 0, background:"#ffffff", borderRight:"1px solid #e5e3de", display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease", flexShrink:0 },
-    content: { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" },
+    sidebar: { width: sidebarOpen ? 230 : 0, minWidth: sidebarOpen ? 230 : 0, maxWidth: sidebarOpen ? 230 : 0, background:"#ffffff", borderRight:"1px solid #e5e3de", display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.25s ease", flexShrink:0 },
+    content: { flex:"1 1 0%", minWidth:0, display:"flex", flexDirection:"column", overflow:"hidden" },
     card: { background:"#ffffff", border:"1px solid #e5e3de", borderRadius:14, padding:"16px 18px" },
     input: { background:"#ffffff", border:"1px solid #dddddd", borderRadius:10, padding:"9px 13px", color:"#1a1a1a", fontSize:13, outline:"none", width:"100%", fontFamily:"inherit" },
-    navBtn: (active) => ({ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", textAlign:"left", padding:"9px 10px", marginBottom:2, border:"none", background: active ? "#1a1a1a" : "none", borderRadius:6, fontSize:12.6, color: active ? "#fff" : "#444", fontWeight: active ? 600 : 400, cursor:"pointer", fontFamily:"inherit", transition:"background 0.15s" }),
+    navBtn: (active) => ({ display:"flex", alignItems:"center", justifyContent:"space-between", gap:6, width:"100%", minWidth:0, boxSizing:"border-box", textAlign:"left", padding:"9px 10px", marginBottom:2, border:"none", background: active ? "#1a1a1a" : "none", borderRadius:6, fontSize:12.6, color: active ? "#fff" : "#444", fontWeight: active ? 600 : 400, cursor:"pointer", fontFamily:"inherit", transition:"background 0.15s" }),
+    navBtnLabel: { overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 },
     tab: (active) => ({ padding:"8px 16px", borderRadius:"8px 8px 0 0", fontSize:12, fontWeight:700, letterSpacing:"0.03em", border:"none", cursor:"pointer", fontFamily:"inherit", background: active ? "#f0efe9" : "transparent", color: active ? bc : "#999999", borderBottom: active ? `2px solid ${bc}` : "2px solid transparent", transition:"all 0.15s" }),
     btn: (color, ghost) => ({ background: ghost ? "transparent" : (color || bc), border: `1px solid ${ghost ? "#dddddd" : (color || bc)}`, borderRadius:10, padding:"9px 18px", color: ghost ? "#6b6b6b" : "#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:7, transition:"all 0.15s", whiteSpace:"nowrap" }),
     iconBtn: { background:"transparent", border:"none", cursor:"pointer", color:"#6b6b6b", padding:6, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center" },
@@ -371,6 +372,7 @@ export default function AdsOS() {
     <div style={S.app}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
+        html,body,#root{max-width:100%;overflow-x:hidden}
         ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#dddddd;border-radius:2px}
         textarea,input{font-family:inherit} textarea{resize:none}
         textarea::placeholder,input::placeholder{color:#999999}
@@ -409,7 +411,7 @@ export default function AdsOS() {
       <div style={S.main}>
         {/* SIDEBAR */}
         <div style={S.sidebar}>
-          <div style={{ padding:"14px 12px 8px", overflowY:"auto", flex:1, minWidth:248 }}>
+          <div style={{ padding:"14px 12px 8px", overflowY:"auto", overflowX:"hidden", flex:1, minWidth:0, width:"100%" }}>
             <div style={{ fontSize:10.5, fontWeight:700, letterSpacing:"0.04em", color:"#999", marginBottom:6, textTransform:"uppercase" }}>Brand</div>
             <select
               value={activeBrand?.id || ""}
@@ -427,13 +429,13 @@ export default function AdsOS() {
             {activeBrand && (
               <div style={{ borderTop:"1px solid #eee", paddingTop:10, marginTop:4, marginBottom:6 }}>
                 <button style={S.navBtn(brandTab === "home")} className={brandTab === "home" ? "" : "hov-bg"} onClick={() => setBrandTab("home")}>
-                  <span>Home</span><span />
+                  <span style={S.navBtnLabel}>Home</span><span />
                 </button>
                 {CHANNELS.map(c => {
                   const conn = isChannelConnected(c.id, channelStatus[activeBrand.id]);
                   return (
                     <button key={c.id} style={S.navBtn(brandTab === c.id)} className={brandTab === c.id ? "" : "hov-bg"} onClick={() => setBrandTab(c.id)}>
-                      <span>{c.label}</span>
+                      <span style={S.navBtnLabel}>{c.label}</span>
                       <span style={{ width:7, height:7, borderRadius:"50%", flexShrink:0, background: conn ? "#3a7d44" : "#ccc" }} />
                     </button>
                   );
@@ -454,7 +456,7 @@ export default function AdsOS() {
                   ["audit", "Audit"],
                 ].map(([id, label]) => (
                   <button key={id} style={S.navBtn(brandTab === id)} className={brandTab === id ? "" : "hov-bg"} onClick={() => setBrandTab(id)}>
-                    <span>{label}</span><span />
+                    <span style={S.navBtnLabel}>{label}</span><span />
                   </button>
                 ))}
               </div>

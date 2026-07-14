@@ -177,7 +177,7 @@ export default function CommandCenter({ bc, activeBrand, channelStatus }) {
         </div>
 
         {kpiErr && !kpis ? <Panel><ErrBox msg={kpiErr} /></Panel> : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14, marginBottom: 18 }}>
             <Card label="Shopify Revenue (MTD)" big={kpis ? fmtMoney(kpis.revenueMTD, cur) : "—"} note={kpis ? `${kpis.ordersMTD} paid orders · ${kpis.dayOfMonth} days in` : ""} />
             <Card label="Projected Month-End" big={kpis ? fmtMoney(kpis.projection, cur) : "—"} note={kpis && kpis.target ? (kpis.projection >= kpis.target ? "On pace for target" : "Below target pace") : ""} />
             <Card label="Ad Spend (MTD, Meta+Google)" big={kpis ? fmtMoney(kpis.totalSpend, cur) : "—"} note={kpis ? `Meta ${fmtMoney(kpis.metaSpend, cur)} · Google ${fmtMoney(kpis.googleSpend, cur)}` : ""} />
@@ -197,7 +197,7 @@ export default function CommandCenter({ bc, activeBrand, channelStatus }) {
           </Panel>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))", gap: 14 }}>
           <Panel title="Meta — Efficiency Bands">
             {!metaConnected ? <Loading text="Meta not connected for this brand." /> : metaErr ? <ErrBox msg={metaErr} /> : !metaCampaigns ? <Loading /> : (() => {
               const avg = (fn) => { const vals = metaCampaigns.map(fn).filter(v => v != null && !isNaN(v)); return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null; };
@@ -251,7 +251,7 @@ export default function CommandCenter({ bc, activeBrand, channelStatus }) {
           )}
         </Panel>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))", gap: 14 }}>
           <Panel title="Shopify — Sales by Traffic Driver (last 14 days)" footer={attribution?.note}>
             {!shopifyConnected ? <Loading text="Shopify not connected for this brand." /> : attrErr ? <ErrBox msg={attrErr} /> : !attribution ? <Loading /> : (
               <div>
