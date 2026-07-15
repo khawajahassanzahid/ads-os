@@ -82,8 +82,17 @@ export default function ReconciliationPanel({ activeBrand, channelStatus }) {
         if (shopRes.error) throw new Error(JSON.stringify(shopRes.error));
 
         const ga4Rows = ga4Res.rows || [];
+        // GA4's default channel grouping splits Google Ads traffic across
+        // more than just "Paid Search" — Performance Max and Demand Gen
+        // campaigns (which span Search, Display, YouTube, Discover, Gmail,
+        // Maps) get bucketed as "Cross-network" instead, and standalone
+        // Shopping campaigns as "Paid Shopping". A brand running mostly
+        // PMax (like most Shopify DTC accounts) would show near-zero
+        // "Paid Search" revenue even though Google is driving real sales —
+        // that's a GA4 taxonomy quirk, not proof the ads aren't working.
+        const GOOGLE_GROUPS = ["Paid Search", "Cross-network", "Paid Shopping"];
         const ga4Meta = ga4Rows.filter(r => r.channel === "Paid Social").reduce((s, r) => s + r.revenue, 0);
-        const ga4Google = ga4Rows.filter(r => r.channel === "Paid Search").reduce((s, r) => s + r.revenue, 0);
+        const ga4Google = ga4Rows.filter(r => GOOGLE_GROUPS.includes(r.channel)).reduce((s, r) => s + r.revenue, 0);
 
         let metaClaimed = 0;
         if (metaRes && !metaRes.error) {
@@ -159,7 +168,7 @@ export default function ReconciliationPanel({ activeBrand, channelStatus }) {
       <div style={{ background: "#fff8e6", border: "1px solid #f0d98c", borderRadius: 10, padding: "12px 16px", fontSize: 12.5, color: "#4a3c00", lineHeight: 1.6 }}>
         <strong>Reallocation read:</strong> {recommendation}
       </div>
-      <div style={{ fontSize: 11, color: "#999", marginTop: 6 }}>Last 14 days · GA4 sessionDefaultChannelGroup used as the neutral cross-channel anchor.</div>
+      <div style={{ fontSize: 11, color: "#999", marginTop: 6, lineHeight: 1.5 }}>Last 14 days · GA4 sessionDefaultChannelGroup used as the neutral cross-channel anchor, with Cross-network and Paid Shopping counted toward Google (Performance Max/Demand Gen traffic lands there, not Paid Search). If these numbers still look off by roughly an order of magnitude, check that your GA4 property's reporting currency matches Shopify's store currency — a mismatch there silently skews every comparison on this page.</div>
     </div>
   );
 }
