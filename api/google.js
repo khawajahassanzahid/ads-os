@@ -12,7 +12,7 @@
 
 import { getCredential, upsertCredential } from './_lib/db.js';
 
-const API_VERSION = process.env.GOOGLE_ADS_API_VERSION || 'v19';
+const API_VERSION = process.env.GOOGLE_ADS_API_VERSION || 'v24';
 
 async function refreshAccessToken(refreshToken) {
   const r = await fetch('https://oauth2.googleapis.com/token', {
