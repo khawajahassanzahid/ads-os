@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrencySymbol } from "./currency.js";
+import ReconciliationPanel from "./ReconciliationPanel.jsx";
 
 // Command Center — brought in from the JULKÉ Ads Command Center mockup, but
 // rewired to pull from this app's own /api/* endpoints (brand-scoped,
@@ -172,9 +173,7 @@ export default function CommandCenter({ bc, activeBrand, channelStatus }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
       <div style={{ maxWidth: 1020, margin: "0 auto" }} className="fade-up">
-        <div style={{ background: "#fff8e6", border: "1px solid #f0d98c", borderRadius: 8, padding: "10px 14px", fontSize: 12.5, color: "#6b5300", marginBottom: 18, lineHeight: 1.5 }}>
-          <strong>Read this before trusting platform ROAS:</strong> Meta and Google self-report conversion value that typically runs above what Shopify actually attributes to each channel. Use platform ROAS/CPA for relative day-to-day comparison, not as literal revenue. "Blended Real ROAS" and channel attribution below use real Shopify order data.
-        </div>
+        <ReconciliationPanel activeBrand={activeBrand} channelStatus={channelStatus} />
 
         {kpiErr && !kpis ? <Panel><ErrBox msg={kpiErr} /></Panel> : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 14, marginBottom: 18 }}>
