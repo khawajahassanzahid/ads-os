@@ -54,8 +54,21 @@ async function gaqlSearch({ customerId, loginCustomerId, accessToken, query }) {
 
   const url = `https://googleads.googleapis.com/${API_VERSION}/customers/${customerId}/googleAds:search`;
   const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ query, pageSize: 200 }) });
-  const data = await r.json();
-  if (!r.ok) throw new Error(JSON.stringify(data));
+
+  // Google Ads API normally returns JSON even on error, but a request that
+  // never reaches the Ads API backend (bad auth at the gateway layer, API
+  // not enabled, wrong project, etc.) can come back as an HTML error page
+  // instead. r.json() on that throws a generic "Unexpected token '<'"
+  // SyntaxError that hides the real problem — read as text first so the
+  // actual Google error (or HTML) is visible in the thrown message.
+  const raw = await r.text();
+  let data;
+  try { data = JSON.parse(raw); } catch { data = null; }
+
+  if (!r.ok || !data) {
+    const detail = data ? JSON.stringify(data) : raw.slice(0, 500);
+    throw new Error(`Google Ads API ${r.status} ${r.statusText}: ${detail}`);
+  }
   return data.results || [];
 }
 
