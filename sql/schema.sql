@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS brands (
 CREATE TABLE IF NOT EXISTS credentials (
   id             SERIAL PRIMARY KEY,
   brand_id       TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
-  platform       TEXT NOT NULL CHECK (platform IN ('shopify', 'meta', 'google')),
+  platform       TEXT NOT NULL CHECK (platform IN ('shopify', 'meta', 'google', 'ga4', 'searchConsole', 'merchantCenter', 'youtube', 'aiSeo', 'email', 'organicSocial', 'affiliate')),
   access_token   TEXT,                   -- Shopify token / Meta long-lived token / Google access token (short-lived, refreshed on the fly)
   refresh_token  TEXT,                   -- Google only (Shopify/Meta tokens don't expire the same way)
   account_id     TEXT,                   -- shop domain / Meta ad account id (act_...) / Google customer id
