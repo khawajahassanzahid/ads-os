@@ -53,7 +53,7 @@ async function gaqlSearch({ customerId, loginCustomerId, accessToken, query }) {
   if (loginCustomerId) headers['login-customer-id'] = String(loginCustomerId).replace(/-/g, '');
 
   const url = `https://googleads.googleapis.com/${API_VERSION}/customers/${customerId}/googleAds:search`;
-  const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ query, pageSize: 200 }) });
+  const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ query }) }); // page size is fixed at 10000 rows as of v24, no longer a settable param
 
   // Google Ads API normally returns JSON even on error, but a request that
   // never reaches the Ads API backend (bad auth at the gateway layer, API
